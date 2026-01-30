@@ -4,6 +4,7 @@
   "main": "index.js",
   "scripts": {
     "android": "react-native run-android",
+    "android:clean": "node scripts/android-clean.js",
     "ios": "react-native run-ios",
     "start": "react-native start",
     "test": "jest",

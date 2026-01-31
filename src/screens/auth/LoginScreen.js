@@ -21,11 +21,15 @@ import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-si
 import appleAuth from '@invertase/react-native-apple-authentication';
 import AuthScreenBackground from '../../components/AuthScreenBackground';
 
-// Configure Google Sign In
-GoogleSignin.configure({
-  webClientId: 'YOUR_WEB_CLIENT_ID', // From Google Cloud Console
-  iosClientId: 'YOUR_IOS_CLIENT_ID', // From Google Cloud Console
-});
+// Configure Google Sign In (wrapped in try-catch to prevent crashes if not properly set up)
+try {
+  GoogleSignin.configure({
+    webClientId: 'YOUR_WEB_CLIENT_ID', // From Google Cloud Console
+    iosClientId: 'YOUR_IOS_CLIENT_ID', // From Google Cloud Console
+  });
+} catch (error) {
+  console.log('Google Sign In configuration error:', error);
+}
 
 const LoginScreen = () => {
   const theme = useTheme();
@@ -298,14 +302,6 @@ const LoginScreen = () => {
           </TouchableOpacity>
         </View>
       </ScrollView>
-
-      {/* Gradient Background - Using layered approach for cross-platform compatibility */}
-      <View style={styles.gradientBackground} pointerEvents="none">
-        <View style={[styles.gradientLayer, styles.gradientLayer1]} />
-        <View style={[styles.gradientLayer, styles.gradientLayer2]} />
-        <View style={[styles.gradientLayer, styles.gradientLayer3]} />
-        <View style={[styles.gradientLayer, styles.gradientLayer4]} />
-      </View>
 
       {/* Other Methods Modal */}
       <Modal

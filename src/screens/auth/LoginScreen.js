@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { useTheme } from '../../theme/ThemeContext';
 import { useNavigation } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import PhoneInput from 'react-native-phone-number-input';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import appleAuth from '@invertase/react-native-apple-authentication';
@@ -150,7 +150,7 @@ const LoginScreen = () => {
       style={styles.container}
     >
       {/* Lottie background with blur and gradient overlay */}
-      <AuthScreenBackground lottieSource={require('../../../assets/lottie/log_in.lottie')} />
+      <AuthScreenBackground lottieSource={require('../../../assets/lottie/log_in.json')} />
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}

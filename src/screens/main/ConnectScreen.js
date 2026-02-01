@@ -8,7 +8,7 @@ import {
   TextInput,
 } from 'react-native';
 import { useTheme } from '../../theme/ThemeContext';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 
 const ConnectScreen = () => {
   const theme = useTheme();

@@ -20,7 +20,7 @@ if (Platform.OS !== 'web') {
  * - Blur overlay (native) or semi-transparent gradient (web)
  * - Gradient overlay for consistent look
  */
-const AuthScreenBackground = ({ lottieSource = require('../../assets/lottie/log_in.lottie') }) => {
+const AuthScreenBackground = ({ lottieSource = require('../../assets/lottie/log_in.json') }) => {
   return (
     <View style={styles.container} pointerEvents="none">
       {/* Layer 1: Lottie animation - full screen */}

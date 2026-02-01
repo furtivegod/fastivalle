@@ -19,26 +19,30 @@ const WelcomeScreen = () => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
-        <Text style={styles.headerTitle}>WELCOME TO</Text>
-        <Text style={styles.subHeaderTitle}>CHRISTIAN MUSIC FESTIVAL</Text>
-        <Text style={styles.mainTitle}>CREATE YOUR RHYTHM</Text>
-        <Text style={styles.description}>
-          A space to create, connect, and grow — where your faith, voice, and purpose come together.
-        </Text>
+        <View>
+          <Text style={styles.headerTitle}>Welcome</Text>
+          <Text style={styles.subHeaderTitle}>CHRISTIAN MUSIC FESTIVAL</Text>
+        </View>
+        <View>
+          <Text style={styles.mainTitle}>CREATE YOUR RHYTHM</Text>
+          <Text style={styles.description}>
+            A space to create, connect, and grow — where your faith, voice, and purpose come together.
+          </Text>
 
-        <TouchableOpacity
-          style={styles.primaryButton}
-          onPress={() => navigation.navigate('Signup')}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.primaryButtonText}>Get Started</Text>
-        </TouchableOpacity>
-
-        <View style={styles.loginRow}>
-          <Text style={styles.loginPrompt}>Already have an account?</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-            <Text style={styles.loginLink}>Log In</Text>
+          <TouchableOpacity
+            style={styles.primaryButton}
+            onPress={() => navigation.navigate('Signup')}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.primaryButtonText}>Get Started</Text>
           </TouchableOpacity>
+
+          <View style={styles.loginRow}>
+            <Text style={styles.loginPrompt}>Already have an account?</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+              <Text style={styles.loginLink}>Log In</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     </SafeAreaView>
@@ -52,13 +56,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   content: {
-    paddingHorizontal: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 32,
+    flex: 1,
+    justifyContent: 'space-between',
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '500',
+    fontSize: 30,
+    fontWeight: 'bold',
     color: '#FFFFFF',
     textAlign: 'center',
     letterSpacing: 1,
@@ -73,27 +78,23 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   mainTitle: {
-    fontSize: 28,
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#FFFFFF',
-    textAlign: 'center',
     letterSpacing: 0.5,
-    marginBottom: 20,
-    paddingHorizontal: 16,
+    marginBottom: 10,
   },
   description: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#FFFFFF',
-    textAlign: 'center',
-    lineHeight: 24,
+    lineHeight: 20,
     marginBottom: 40,
-    paddingHorizontal: 16,
   },
   primaryButton: {
     backgroundColor: '#FFFFFF',
     paddingVertical: 16,
     paddingHorizontal: 48,
-    borderRadius: 12,
+    borderRadius: 100,
     minWidth: 240,
     alignItems: 'center',
     marginBottom: 24,
@@ -118,7 +119,7 @@ const styles = StyleSheet.create({
   loginLink: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#FF6B35',
+    color: '#FFFFFF',
     textDecorationLine: 'underline',
     textAlign: 'center',
   },

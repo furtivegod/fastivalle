@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View,
+  Image,
   Text,
   TextInput,
   TouchableOpacity,
@@ -15,7 +16,7 @@ import {
 } from 'react-native';
 import { useTheme } from '../../theme/ThemeContext';
 import { useNavigation } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import PhoneInput from 'react-native-phone-number-input';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import appleAuth from '@invertase/react-native-apple-authentication';
@@ -39,9 +40,15 @@ const SignupScreen = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showOtherMethods, setShowOtherMethods] = useState(false);
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const phoneInputRef = React.useRef(null);
+
+  // Password validation states
+  const [passwordValidation, setPasswordValidation] = useState({
+    length: false,
+    hasLetterNumberSpecial: false,
+  });
 
   useEffect(() => {
     if (Platform.OS === 'android') {
@@ -55,17 +62,30 @@ const SignupScreen = () => {
     }
   }, []);
 
+  // Validate password on change
+  useEffect(() => {
+    const hasLength = password.length >= 8 && password.length <= 20;
+    const hasLetter = /[a-zA-Z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+    const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+    
+    setPasswordValidation({
+      length: hasLength,
+      hasLetterNumberSpecial: hasLetter && hasNumber && hasSpecial,
+    });
+  }, [password]);
+
   const handlePhoneSignup = () => {
     if (!phone || !password || !confirmPassword) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
     }
-    if (password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
+    if (!passwordValidation.length || !passwordValidation.hasLetterNumberSpecial) {
+      Alert.alert('Error', 'Password does not meet requirements');
       return;
     }
-    if (password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters');
+    if (password !== confirmPassword) {
+      Alert.alert('Error', 'Passwords do not match');
       return;
     }
     setLoading(true);
@@ -77,40 +97,16 @@ const SignupScreen = () => {
     }, 1000);
   };
 
-  const handleEmailSignup = () => {
-    if (!name || !email || !password || !confirmPassword) {
-      Alert.alert('Error', 'Please fill in all fields');
-      return;
-    }
-    if (password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
-      return;
-    }
-    if (password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters');
-      return;
-    }
-    setLoading(true);
-    console.log('Email Signup:', { name, email, password });
-    setTimeout(() => {
-      setLoading(false);
-      setShowOtherMethods(false);
-      navigation.navigate('MainTabs');
-    }, 1000);
-  };
-
   const handleGoogleSignUp = async () => {
     try {
       setLoading(true);
+      setShowOtherMethods(false);
       if (Platform.OS === 'android') {
         await GoogleSignin.hasPlayServices();
         const userInfo = await GoogleSignin.signIn();
         console.log('Google Sign Up:', userInfo);
-      } else if (Platform.OS === 'web') {
-        console.log('Web Google Sign Up');
       }
       setLoading(false);
-      setShowOtherMethods(false);
       navigation.navigate('MainTabs');
     } catch (error) {
       setLoading(false);
@@ -130,6 +126,7 @@ const SignupScreen = () => {
   const handleAppleSignUp = async () => {
     try {
       setLoading(true);
+      setShowOtherMethods(false);
       if (Platform.OS === 'ios' && appleAuth.isSupported) {
         const appleAuthRequestResponse = await appleAuth.performRequest({
           requestedOperation: appleAuth.Operation.LOGIN,
@@ -143,7 +140,6 @@ const SignupScreen = () => {
         if (credentialState === appleAuth.State.AUTHORIZED) {
           console.log('Apple Sign Up:', appleAuthRequestResponse);
           setLoading(false);
-          setShowOtherMethods(false);
           navigation.navigate('MainTabs');
         }
       }
@@ -158,31 +154,39 @@ const SignupScreen = () => {
     }
   };
 
+  const handleEmailSignUp = () => {
+    setShowOtherMethods(false);
+    // Navigate to email signup or show email form
+    // For now, just close modal
+  };
+
+  const ValidationItem = ({ isValid, text }) => (
+    <View style={styles.validationItem}>
+      <View style={[styles.validationIcon, isValid && styles.validationIconValid]}>
+        {isValid && <Ionicons name="checkmark" size={12} color="#FFFFFF" />}
+      </View>
+      <Text style={[styles.validationText, isValid && styles.validationTextValid]}>
+        {text}
+      </Text>
+    </View>
+  );
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
       {/* Lottie background with blur and gradient overlay */}
-      <AuthScreenBackground lottieSource={require('../../../assets/lottie/ban_sup.lottie')} />
+      <AuthScreenBackground lottieSource={require('../../../assets/lottie/log_in.json')} />
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Header with Sign Up title */}
-        <View style={styles.topHeader}>
-          <Text style={[styles.screenTitle, { color: theme.colors.text }]}>
-            Sign Up
-          </Text>
-        </View>
-
         {/* Logo */}
         <View style={styles.logoContainer}>
-          <Text style={[styles.logo, { color: theme.colors.text }]}>
-            Fastivalle™
-          </Text>
+          <Image source={require('../../../assets/images/logo.png')} style={styles.logo} />
         </View>
 
         {/* Join the Movement heading */}
@@ -231,23 +235,50 @@ const SignupScreen = () => {
             <Text style={[styles.label, { color: theme.colors.text }]}>
               Create Password
             </Text>
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  backgroundColor: '#FFFFFF',
-                  color: theme.colors.text,
-                  borderColor: theme.colors.border,
-                },
-              ]}
-              placeholder="Enter password"
-              placeholderTextColor={theme.colors.textSecondary}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              autoCapitalize="none"
-              editable={!loading}
-            />
+            <View style={styles.passwordInputWrapper}>
+              <TextInput
+                style={[
+                  styles.input,
+                  styles.passwordInput,
+                  {
+                    backgroundColor: '#FFFFFF',
+                    color: theme.colors.text,
+                    borderColor: theme.colors.border,
+                  },
+                ]}
+                placeholder="Enter password"
+                placeholderTextColor={theme.colors.textSecondary}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                editable={!loading}
+              />
+              <TouchableOpacity
+                style={styles.eyeButton}
+                onPress={() => setShowPassword(!showPassword)}
+              >
+                <Ionicons
+                  name={showPassword ? 'eye' : 'eye-outline'}
+                  size={22}
+                  color={theme.colors.textSecondary}
+                />
+              </TouchableOpacity>
+            </View>
+            
+            {/* Password Validation */}
+            {password.length > 0 && (
+              <View style={styles.validationContainer}>
+                <ValidationItem
+                  isValid={passwordValidation.length}
+                  text="8-20 characters."
+                />
+                <ValidationItem
+                  isValid={passwordValidation.hasLetterNumberSpecial}
+                  text="At least one letter, number and special character"
+                />
+              </View>
+            )}
           </View>
 
           {/* Confirm Password Input */}
@@ -255,23 +286,47 @@ const SignupScreen = () => {
             <Text style={[styles.label, { color: theme.colors.text }]}>
               Confirm Password
             </Text>
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  backgroundColor: '#FFFFFF',
-                  color: theme.colors.text,
-                  borderColor: theme.colors.border,
-                },
-              ]}
-              placeholder="Enter password again"
-              placeholderTextColor={theme.colors.textSecondary}
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              secureTextEntry
-              autoCapitalize="none"
-              editable={!loading}
-            />
+            <View style={styles.passwordInputWrapper}>
+              <TextInput
+                style={[
+                  styles.input,
+                  styles.passwordInput,
+                  {
+                    backgroundColor: '#FFFFFF',
+                    color: theme.colors.text,
+                    borderColor: confirmPassword.length > 0 && password !== confirmPassword
+                      ? '#E53935'
+                      : theme.colors.border,
+                    borderWidth: confirmPassword.length > 0 && password !== confirmPassword ? 2 : 1,
+                  },
+                ]}
+                placeholder="Enter password again"
+                placeholderTextColor={theme.colors.textSecondary}
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                secureTextEntry={!showConfirmPassword}
+                autoCapitalize="none"
+                editable={!loading}
+              />
+              <TouchableOpacity
+                style={styles.eyeButton}
+                onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+              >
+                <Ionicons
+                  name={showConfirmPassword ? 'eye' : 'eye-outline'}
+                  size={22}
+                  color={theme.colors.textSecondary}
+                />
+              </TouchableOpacity>
+            </View>
+            
+            {/* Confirm Password Validation Messages */}
+            {password.length > 0 && (!passwordValidation.length || !passwordValidation.hasLetterNumberSpecial) && (
+              <Text style={styles.errorText}>Please enter a valid password</Text>
+            )}
+            {confirmPassword.length > 0 && password !== confirmPassword && (
+              <Text style={styles.errorText}>Passwords don't match</Text>
+            )}
           </View>
 
           {/* Sign Up Button */}
@@ -293,15 +348,6 @@ const SignupScreen = () => {
             )}
           </TouchableOpacity>
 
-          {/* Divider */}
-          <View style={styles.dividerContainer}>
-            <View style={[styles.dividerLine, { borderColor: theme.colors.border }]} />
-            <Text style={[styles.dividerText, { color: theme.colors.textSecondary }]}>
-              or
-            </Text>
-            <View style={[styles.dividerLine, { borderColor: theme.colors.border }]} />
-          </View>
-
           {/* Sign Up With Other Methods Button */}
           <TouchableOpacity
             style={[
@@ -315,6 +361,15 @@ const SignupScreen = () => {
               Sign Up With Other Methods
             </Text>
           </TouchableOpacity>
+
+          {/* Divider */}
+          <View style={styles.dividerContainer}>
+            <View style={[styles.dividerLine, { borderColor: theme.colors.border }]} />
+            <Text style={[styles.dividerText, { color: theme.colors.textSecondary }]}>
+              or
+            </Text>
+            <View style={[styles.dividerLine, { borderColor: theme.colors.border }]} />
+          </View>
         </View>
 
         {/* Log In Link */}
@@ -330,7 +385,7 @@ const SignupScreen = () => {
         </View>
       </ScrollView>
 
-      {/* Other Methods Modal */}
+      {/* Continue With Modal */}
       <Modal
         visible={showOtherMethods}
         transparent={true}
@@ -345,165 +400,53 @@ const SignupScreen = () => {
             style={[styles.modalContent, { backgroundColor: theme.colors.background }]}
             onStartShouldSetResponder={() => true}
           >
-            <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: theme.colors.text }]}>
-                Other Sign Up Methods
-              </Text>
-              <TouchableOpacity onPress={() => setShowOtherMethods(false)}>
-                <Ionicons name="close" size={24} color={theme.colors.text} />
-              </TouchableOpacity>
-            </View>
+            {/* Modal Handle */}
+            <View style={styles.modalHandle} />
+            
+            {/* Modal Title */}
+            <Text style={[styles.modalTitle, { color: theme.colors.text }]}>
+              Continue with
+            </Text>
 
-            <View style={styles.modalMethods}>
-              {/* Email Signup */}
-              <View style={styles.modalMethodSection}>
-                <Text style={[styles.modalMethodLabel, { color: theme.colors.text }]}>
-                  Full Name
-                </Text>
-                <TextInput
-                  style={[
-                    styles.modalInput,
-                    {
-                      backgroundColor: theme.colors.surface,
-                      color: theme.colors.text,
-                      borderColor: theme.colors.border,
-                    },
-                  ]}
-                  placeholder="Enter your full name"
-                  placeholderTextColor={theme.colors.textSecondary}
-                  value={name}
-                  onChangeText={setName}
-                  autoCapitalize="words"
-                  editable={!loading}
-                />
-                <Text style={[styles.modalMethodLabel, { color: theme.colors.text }, styles.modalLabelMargin]}>
-                  Email
-                </Text>
-                <TextInput
-                  style={[
-                    styles.modalInput,
-                    {
-                      backgroundColor: theme.colors.surface,
-                      color: theme.colors.text,
-                      borderColor: theme.colors.border,
-                    },
-                  ]}
-                  placeholder="Enter your email"
-                  placeholderTextColor={theme.colors.textSecondary}
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoComplete="email"
-                  editable={!loading}
-                />
-                <Text style={[styles.modalMethodLabel, { color: theme.colors.text }, styles.modalLabelMargin]}>
-                  Password
-                </Text>
-                <TextInput
-                  style={[
-                    styles.modalInput,
-                    {
-                      backgroundColor: theme.colors.surface,
-                      color: theme.colors.text,
-                      borderColor: theme.colors.border,
-                    },
-                  ]}
-                  placeholder="Create a password"
-                  placeholderTextColor={theme.colors.textSecondary}
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry
-                  autoCapitalize="none"
-                  editable={!loading}
-                />
-                <Text style={[styles.modalMethodLabel, { color: theme.colors.text }, styles.modalLabelMargin]}>
-                  Confirm Password
-                </Text>
-                <TextInput
-                  style={[
-                    styles.modalInput,
-                    {
-                      backgroundColor: theme.colors.surface,
-                      color: theme.colors.text,
-                      borderColor: theme.colors.border,
-                    },
-                  ]}
-                  placeholder="Confirm your password"
-                  placeholderTextColor={theme.colors.textSecondary}
-                  value={confirmPassword}
-                  onChangeText={setConfirmPassword}
-                  secureTextEntry
-                  autoCapitalize="none"
-                  editable={!loading}
-                />
-                <TouchableOpacity
-                  style={[
-                    styles.modalButton,
-                    { backgroundColor: theme.colors.primary },
-                    loading && styles.buttonDisabled,
-                  ]}
-                  onPress={handleEmailSignup}
-                  disabled={loading}
-                >
-                  <Text style={[styles.modalButtonText, { color: theme.colors.background }]}>
-                    {loading ? 'Creating Account...' : 'Sign Up with Email'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Social Sign Up Options */}
-              <View style={styles.modalDivider}>
-                <View style={[styles.dividerLine, { borderColor: theme.colors.border }]} />
-                <Text style={[styles.dividerText, { color: theme.colors.textSecondary }]}>
-                  or
-                </Text>
-                <View style={[styles.dividerLine, { borderColor: theme.colors.border }]} />
-              </View>
-
-              {Platform.OS === 'ios' && appleAuth.isSupported && (
-                <TouchableOpacity
-                  style={[
-                    styles.modalSocialButton,
-                    styles.appleButton,
-                    { backgroundColor: theme.colors.text },
-                  ]}
-                  onPress={handleAppleSignUp}
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <ActivityIndicator color={theme.colors.background} />
-                  ) : (
-                    <>
-                      <Ionicons name="logo-apple" size={20} color={theme.colors.background} />
-                      <Text style={[styles.modalSocialButtonText, { color: theme.colors.background }]}>
-                        Continue with Apple
-                      </Text>
-                    </>
-                  )}
-                </TouchableOpacity>
-              )}
-
+            {/* Continue Options */}
+            <View style={styles.modalOptions}>
+              {/* Continue with Email */}
               <TouchableOpacity
-                style={[
-                  styles.modalSocialButton,
-                  styles.googleButton,
-                  { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
-                ]}
+                style={styles.continueButton}
+                onPress={handleEmailSignUp}
+                disabled={loading}
+              >
+                <Ionicons name="mail-outline" size={20} color={theme.colors.text} />
+                <Text style={[styles.continueButtonText, { color: theme.colors.text }]}>
+                  Continue with Email
+                </Text>
+              </TouchableOpacity>
+
+              {/* Continue with Google */}
+              <TouchableOpacity
+                style={styles.continueButton}
                 onPress={handleGoogleSignUp}
                 disabled={loading}
               >
-                {loading ? (
-                  <ActivityIndicator color={theme.colors.text} />
-                ) : (
-                  <>
-                    <Ionicons name="logo-google" size={20} color={theme.colors.text} />
-                    <Text style={[styles.modalSocialButtonText, { color: theme.colors.text }]}>
-                      Continue with Google
-                    </Text>
-                  </>
-                )}
+                <Ionicons name="logo-google" size={20} color="#DB4437" />
+                <Text style={[styles.continueButtonText, { color: theme.colors.text }]}>
+                  Continue with Google
+                </Text>
               </TouchableOpacity>
+
+              {/* Continue with Apple */}
+              {Platform.OS === 'ios' && (
+                <TouchableOpacity
+                  style={styles.continueButton}
+                  onPress={handleAppleSignUp}
+                  disabled={loading}
+                >
+                  <Ionicons name="logo-apple" size={20} color={theme.colors.text} />
+                  <Text style={[styles.continueButtonText, { color: theme.colors.text }]}>
+                    Continue with Apple
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         </Pressable>
@@ -515,7 +458,7 @@ const SignupScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F0', // Light textured background
+    backgroundColor: '#F5F5F0',
   },
   scrollContent: {
     flexGrow: 1,
@@ -523,26 +466,18 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'ios' ? 60 : 40,
     zIndex: 1,
   },
-  topHeader: {
-    marginBottom: 24,
-  },
-  screenTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-  },
   logoContainer: {
-    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
     marginBottom: 32,
   },
   logo: {
-    fontSize: 36,
-    fontStyle: 'italic',
-    fontWeight: '600',
-    letterSpacing: 1,
-    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+    width: '100%',
+    resizeMode: 'contain',
   },
   header: {
     marginBottom: 32,
+    alignItems: 'center',
   },
   title: {
     fontSize: 28,
@@ -560,41 +495,103 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   phoneInputContainer: {
-    borderRadius: 8,
+    borderRadius: 28,
     borderWidth: 1,
     width: '100%',
-    height: 50,
+    height: 56,
   },
   phoneInputTextContainer: {
-    borderRadius: 8,
+    borderRadius: 28,
     paddingVertical: 0,
     backgroundColor: '#FFFFFF',
   },
   phoneInputText: {
     fontSize: 16,
-    height: 50,
+    height: 56,
   },
   flagButton: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
   },
   input: {
-    height: 50,
+    height: 56,
     borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 16,
+    borderRadius: 28,
+    paddingHorizontal: 20,
     fontSize: 16,
     backgroundColor: '#FFFFFF',
   },
-  signupButton: {
-    height: 50,
-    borderRadius: 8,
+  passwordInputWrapper: {
+    position: 'relative',
+  },
+  passwordInput: {
+    paddingRight: 50,
+  },
+  eyeButton: {
+    position: 'absolute',
+    right: 16,
+    top: 0,
+    bottom: 0,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 24,
+    width: 40,
+  },
+  validationContainer: {
+    marginTop: 12,
+    paddingLeft: 4,
+  },
+  validationItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  validationIcon: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#E0E0E0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  validationIconValid: {
+    backgroundColor: '#4CAF50',
+  },
+  validationText: {
+    fontSize: 13,
+    color: '#666666',
+  },
+  validationTextValid: {
+    color: '#4CAF50',
+  },
+  errorText: {
+    fontSize: 13,
+    color: '#E53935',
+    fontWeight: 'bold',
+    marginTop: 8,
+    paddingLeft: 4,
+  },
+  signupButton: {
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
   },
   signupButtonText: {
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  otherMethodsButton: {
+    height: 56,
+    borderRadius: 28,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  otherMethodsButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
   dividerContainer: {
     flexDirection: 'row',
@@ -610,22 +607,10 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     fontSize: 14,
   },
-  otherMethodsButton: {
-    height: 50,
-    borderRadius: 8,
-    borderWidth: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  otherMethodsButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
   loginContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: 16,
+    marginTop: 8,
     marginBottom: 40,
   },
   loginText: {
@@ -645,74 +630,38 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     padding: 24,
+    paddingTop: 12,
     paddingBottom: Platform.OS === 'ios' ? 40 : 24,
-    maxHeight: '85%',
   },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 24,
+  modalHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: '#E0E0E0',
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 20,
   },
   modalTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: 'bold',
+    marginBottom: 24,
   },
-  modalMethods: {
-    gap: 20,
-  },
-  modalMethodSection: {
+  modalOptions: {
     gap: 12,
   },
-  modalMethodLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  modalLabelMargin: {
-    marginTop: 16,
-  },
-  modalInput: {
-    height: 50,
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    fontSize: 16,
-  },
-  modalButton: {
-    height: 50,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  modalButtonText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  modalDivider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 8,
-  },
-  modalSocialButton: {
-    height: 50,
-    borderRadius: 8,
+  continueButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    borderWidth: 1,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#F5F5F0',
+    gap: 10,
   },
-  appleButton: {
-    borderWidth: 0,
-  },
-  googleButton: {
-    borderWidth: 1,
-  },
-  modalSocialButtonText: {
+  continueButtonText: {
     fontSize: 16,
     fontWeight: '600',
   },

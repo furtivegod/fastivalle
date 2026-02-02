@@ -13,54 +13,57 @@ import {
   ActivityIndicator,
   Modal,
   Pressable,
+  Keyboard,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
 import { useNavigation } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import PhoneInput from 'react-native-phone-number-input';
-import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
-import appleAuth from '@invertase/react-native-apple-authentication';
+import { useAuth } from '../../context/AuthContext';
+import {
+  signInWithApple as appleSignInNative,
+  isAppleSignInSupported,
+} from '../../services/authService';
 import AuthScreenBackground from '../../components/AuthScreenBackground';
-
-// Configure Google Sign In (wrapped in try-catch to prevent crashes if not properly set up)
-try {
-  GoogleSignin.configure({
-    webClientId: 'YOUR_WEB_CLIENT_ID', // From Google Cloud Console
-    iosClientId: 'YOUR_IOS_CLIENT_ID', // From Google Cloud Console
-  });
-} catch (error) {
-  console.log('Google Sign In configuration error:', error);
-}
 
 const SignupScreen = () => {
   const theme = useTheme();
   const navigation = useNavigation();
+  const { register, signInWithGoogle, signInWithApple } = useAuth();
   const [phone, setPhone] = useState('');
+  const [formattedPhone, setFormattedPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showOtherMethods, setShowOtherMethods] = useState(false);
+  const [showEmailForm, setShowEmailForm] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [email, setEmail] = useState('');
+  const [name, setName] = useState('');
+  const [emailPassword, setEmailPassword] = useState('');
+  const [emailConfirmPassword, setEmailConfirmPassword] = useState('');
   const phoneInputRef = React.useRef(null);
+  const scrollViewRef = React.useRef(null);
+
+  // Scroll to input when focused
+  const scrollToInput = (yOffset) => {
+    setTimeout(() => {
+      scrollViewRef.current?.scrollTo({ y: yOffset, animated: true });
+    }, 100);
+  };
+
+  // Dismiss keyboard when tapping outside
+  const dismissKeyboard = () => {
+    Keyboard.dismiss();
+  };
 
   // Password validation states
   const [passwordValidation, setPasswordValidation] = useState({
     length: false,
     hasLetterNumberSpecial: false,
   });
-
-  useEffect(() => {
-    if (Platform.OS === 'android') {
-      GoogleSignin.hasPlayServices()
-        .then((hasPlayService) => {
-          console.log('Google Play Services available:', hasPlayService);
-        })
-        .catch((error) => {
-          console.log('Google Play Services error:', error);
-        });
-    }
-  }, []);
 
   // Validate password on change
   useEffect(() => {
@@ -75,7 +78,7 @@ const SignupScreen = () => {
     });
   }, [password]);
 
-  const handlePhoneSignup = () => {
+  const handlePhoneSignup = async () => {
     if (!phone || !password || !confirmPassword) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
@@ -89,37 +92,28 @@ const SignupScreen = () => {
       return;
     }
     setLoading(true);
-    const formattedPhone = phoneInputRef.current?.getFormattedNumber() || phone;
-    console.log('Phone Signup:', { phone: formattedPhone, password });
-    setTimeout(() => {
+    try {
+      const phoneToUse = formattedPhone || phone;
+      await register({ phone: phoneToUse, password });
+      // Auth state update will trigger AppNavigator to show MainTabs
+    } catch (err) {
+      Alert.alert('Error', err.message || 'Sign up failed');
+    } finally {
       setLoading(false);
-      navigation.navigate('MainTabs');
-    }, 1000);
+    }
   };
 
   const handleGoogleSignUp = async () => {
     try {
       setLoading(true);
       setShowOtherMethods(false);
-      if (Platform.OS === 'android') {
-        await GoogleSignin.hasPlayServices();
-        const userInfo = await GoogleSignin.signIn();
-        console.log('Google Sign Up:', userInfo);
-      }
-      setLoading(false);
-      navigation.navigate('MainTabs');
+      await signInWithGoogle();
+      // Auth state update will trigger AppNavigator to show MainTabs
     } catch (error) {
+      Alert.alert('Error', error.message || 'Google sign-up failed');
+      console.log('Google Sign Up Error:', error);
+    } finally {
       setLoading(false);
-      if (error.code === statusCodes.SIGN_IN_CANCELLED) {
-        console.log('User cancelled Google Sign Up');
-      } else if (error.code === statusCodes.IN_PROGRESS) {
-        console.log('Google Sign Up in progress');
-      } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-        Alert.alert('Error', 'Google Play Services not available');
-      } else {
-        Alert.alert('Error', 'Google sign-up failed');
-        console.log('Google Sign Up Error:', error);
-      }
     }
   };
 
@@ -127,37 +121,54 @@ const SignupScreen = () => {
     try {
       setLoading(true);
       setShowOtherMethods(false);
-      if (Platform.OS === 'ios' && appleAuth.isSupported) {
-        const appleAuthRequestResponse = await appleAuth.performRequest({
-          requestedOperation: appleAuth.Operation.LOGIN,
-          requestedScopes: [appleAuth.Scope.EMAIL, appleAuth.Scope.FULL_NAME],
-        });
-
-        const credentialState = await appleAuth.getCredentialStateForUser(
-          appleAuthRequestResponse.user
-        );
-
-        if (credentialState === appleAuth.State.AUTHORIZED) {
-          console.log('Apple Sign Up:', appleAuthRequestResponse);
-          setLoading(false);
-          navigation.navigate('MainTabs');
-        }
+      const appleResponse = await appleSignInNative();
+      if (appleResponse) {
+        await signInWithApple(appleResponse);
+        // Auth state update will trigger AppNavigator to show MainTabs
       }
-    } catch (e) {
+    } catch (error) {
+      Alert.alert('Error', error.message || 'Apple sign-up failed');
+      console.log('Apple Sign Up Error:', error);
+    } finally {
       setLoading(false);
-      if (e.code === appleAuth.Error.CANCELED) {
-        console.log('User cancelled Apple Sign Up');
-      } else {
-        Alert.alert('Error', 'Apple sign-up failed');
-        console.log('Apple Sign Up Error:', e);
-      }
     }
   };
 
-  const handleEmailSignUp = () => {
-    setShowOtherMethods(false);
-    // Navigate to email signup or show email form
-    // For now, just close modal
+  const handleEmailSignUpPress = () => {
+    setShowEmailForm(true);
+  };
+
+  const handleEmailSignupSubmit = async () => {
+    if (!email || !emailPassword || !emailConfirmPassword) {
+      Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
+    if (emailPassword.length < 8 || emailPassword.length > 20) {
+      Alert.alert('Error', 'Password must be 8–20 characters');
+      return;
+    }
+    const hasLetter = /[a-zA-Z]/.test(emailPassword);
+    const hasNumber = /[0-9]/.test(emailPassword);
+    const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(emailPassword);
+    if (!hasLetter || !hasNumber || !hasSpecial) {
+      Alert.alert('Error', 'Password must include letter, number and special character');
+      return;
+    }
+    if (emailPassword !== emailConfirmPassword) {
+      Alert.alert('Error', 'Passwords do not match');
+      return;
+    }
+    setLoading(true);
+    try {
+      await register({ email: email.trim(), password: emailPassword, name: name.trim() || undefined });
+      setShowEmailForm(false);
+      setShowOtherMethods(false);
+      // Auth state update will trigger AppNavigator to show MainTabs
+    } catch (err) {
+      Alert.alert('Error', err.message || 'Sign up failed');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const ValidationItem = ({ isValid, text }) => (
@@ -172,22 +183,31 @@ const SignupScreen = () => {
   );
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
-    >
-      {/* Lottie background with blur and gradient overlay */}
-      <AuthScreenBackground lottieSource={require('../../../assets/lottie/log_in.json')} />
-
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={styles.flex}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 10 : 0}
       >
-        {/* Logo */}
-        <View style={styles.logoContainer}>
-          <Image source={require('../../../assets/images/logo.png')} style={styles.logo} />
-        </View>
+        {/* Lottie background with blur and gradient overlay */}
+        <AuthScreenBackground lottieSource={require('../../../assets/lottie/log_in.json')} />
+
+        <ScrollView
+          ref={scrollViewRef}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          bounces={true}
+          keyboardDismissMode="on-drag"
+          automaticallyAdjustKeyboardInsets={true}
+          onScrollBeginDrag={dismissKeyboard}
+        >
+          {/* Logo */}
+          <Pressable onPress={dismissKeyboard}>
+            <View style={styles.logoContainer}>
+              <Image source={require('../../../assets/images/logo.png')} style={styles.logo} />
+            </View>
+          </Pressable>
 
         {/* Join the Movement heading */}
         <View style={styles.header}>
@@ -209,9 +229,7 @@ const SignupScreen = () => {
               defaultCode="US"
               layout="first"
               onChangeText={setPhone}
-              onChangeFormattedText={(text) => {
-                setPhone(text);
-              }}
+              onChangeFormattedText={setFormattedPhone}
               containerStyle={[
                 styles.phoneInputContainer,
                 { backgroundColor: '#FFFFFF', borderColor: theme.colors.border },
@@ -226,6 +244,7 @@ const SignupScreen = () => {
               textInputProps={{
                 placeholder: '(234) 555 678 901',
                 placeholderTextColor: theme.colors.textSecondary,
+                keyboardType: 'phone-pad',
               }}
             />
           </View>
@@ -253,6 +272,7 @@ const SignupScreen = () => {
                 secureTextEntry={!showPassword}
                 autoCapitalize="none"
                 editable={!loading}
+                onFocus={() => scrollToInput(120)}
               />
               <TouchableOpacity
                 style={styles.eyeButton}
@@ -307,6 +327,7 @@ const SignupScreen = () => {
                 secureTextEntry={!showConfirmPassword}
                 autoCapitalize="none"
                 editable={!loading}
+                onFocus={() => scrollToInput(220)}
               />
               <TouchableOpacity
                 style={styles.eyeButton}
@@ -405,53 +426,152 @@ const SignupScreen = () => {
             
             {/* Modal Title */}
             <Text style={[styles.modalTitle, { color: theme.colors.text }]}>
-              Continue with
+              {showEmailForm ? 'Sign up with Email' : 'Continue with'}
             </Text>
 
-            {/* Continue Options */}
-            <View style={styles.modalOptions}>
-              {/* Continue with Email */}
-              <TouchableOpacity
-                style={styles.continueButton}
-                onPress={handleEmailSignUp}
-                disabled={loading}
-              >
-                <Ionicons name="mail-outline" size={20} color={theme.colors.text} />
-                <Text style={[styles.continueButtonText, { color: theme.colors.text }]}>
-                  Continue with Email
-                </Text>
-              </TouchableOpacity>
-
-              {/* Continue with Google */}
-              <TouchableOpacity
-                style={styles.continueButton}
-                onPress={handleGoogleSignUp}
-                disabled={loading}
-              >
-                <Ionicons name="logo-google" size={20} color="#DB4437" />
-                <Text style={[styles.continueButtonText, { color: theme.colors.text }]}>
-                  Continue with Google
-                </Text>
-              </TouchableOpacity>
-
-              {/* Continue with Apple */}
-              {Platform.OS === 'ios' && (
+            {showEmailForm ? (
+              <View style={styles.modalOptions}>
                 <TouchableOpacity
-                  style={styles.continueButton}
-                  onPress={handleAppleSignUp}
+                  style={styles.modalBackButton}
+                  onPress={() => setShowEmailForm(false)}
                   disabled={loading}
                 >
-                  <Ionicons name="logo-apple" size={20} color={theme.colors.text} />
+                  <Ionicons name="arrow-back" size={20} color={theme.colors.text} />
+                  <Text style={[styles.modalBackText, { color: theme.colors.text }]}>Back</Text>
+                </TouchableOpacity>
+                <TextInput
+                  style={[
+                    styles.modalInput,
+                    {
+                      backgroundColor: theme.colors.surface,
+                      color: theme.colors.text,
+                      borderColor: theme.colors.border,
+                    },
+                  ]}
+                  placeholder="Email"
+                  placeholderTextColor={theme.colors.textSecondary}
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoComplete="email"
+                  editable={!loading}
+                />
+                <TextInput
+                  style={[
+                    styles.modalInput,
+                    {
+                      backgroundColor: theme.colors.surface,
+                      color: theme.colors.text,
+                      borderColor: theme.colors.border,
+                    },
+                  ]}
+                  placeholder="Name (optional)"
+                  placeholderTextColor={theme.colors.textSecondary}
+                  value={name}
+                  onChangeText={setName}
+                  autoCapitalize="words"
+                  editable={!loading}
+                />
+                <TextInput
+                  style={[
+                    styles.modalInput,
+                    {
+                      backgroundColor: theme.colors.surface,
+                      color: theme.colors.text,
+                      borderColor: theme.colors.border,
+                    },
+                  ]}
+                  placeholder="Password (8–20 chars)"
+                  placeholderTextColor={theme.colors.textSecondary}
+                  value={emailPassword}
+                  onChangeText={setEmailPassword}
+                  secureTextEntry
+                  autoCapitalize="none"
+                  editable={!loading}
+                />
+                <TextInput
+                  style={[
+                    styles.modalInput,
+                    {
+                      backgroundColor: theme.colors.surface,
+                      color: theme.colors.text,
+                      borderColor: theme.colors.border,
+                    },
+                  ]}
+                  placeholder="Confirm password"
+                  placeholderTextColor={theme.colors.textSecondary}
+                  value={emailConfirmPassword}
+                  onChangeText={setEmailConfirmPassword}
+                  secureTextEntry
+                  autoCapitalize="none"
+                  editable={!loading}
+                />
+                <TouchableOpacity
+                  style={[
+                    styles.modalSubmitButton,
+                    { backgroundColor: '#000000' },
+                    loading && styles.buttonDisabled,
+                  ]}
+                  onPress={handleEmailSignupSubmit}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <ActivityIndicator color="#FFFFFF" />
+                  ) : (
+                    <Text style={[styles.modalSubmitText, { color: '#FFFFFF' }]}>
+                      Sign Up
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            ) : (
+              /* Continue Options */
+              <View style={styles.modalOptions}>
+                {/* Continue with Email */}
+                <TouchableOpacity
+                  style={styles.continueButton}
+                  onPress={handleEmailSignUpPress}
+                  disabled={loading}
+                >
+                  <Ionicons name="mail-outline" size={20} color={theme.colors.text} />
                   <Text style={[styles.continueButtonText, { color: theme.colors.text }]}>
-                    Continue with Apple
+                    Continue with Email
                   </Text>
                 </TouchableOpacity>
-              )}
-            </View>
+
+                {/* Continue with Google */}
+                <TouchableOpacity
+                  style={styles.continueButton}
+                  onPress={handleGoogleSignUp}
+                  disabled={loading}
+                >
+                  <Ionicons name="logo-google" size={20} color="#DB4437" />
+                  <Text style={[styles.continueButtonText, { color: theme.colors.text }]}>
+                    Continue with Google
+                  </Text>
+                </TouchableOpacity>
+
+                {/* Continue with Apple */}
+                {isAppleSignInSupported() && (
+                  <TouchableOpacity
+                    style={styles.continueButton}
+                    onPress={handleAppleSignUp}
+                    disabled={loading}
+                  >
+                    <Ionicons name="logo-apple" size={20} color={theme.colors.text} />
+                    <Text style={[styles.continueButtonText, { color: theme.colors.text }]}>
+                      Continue with Apple
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
           </View>
         </Pressable>
-      </Modal>
-    </KeyboardAvoidingView>
+        </Modal>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 
@@ -460,10 +580,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F5F5F0',
   },
+  flex: {
+    flex: 1,
+    backgroundColor: '#F5F5F0',
+  },
   scrollContent: {
     flexGrow: 1,
     padding: 24,
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingTop: 20,
+    paddingBottom: 40,
     zIndex: 1,
   },
   logoContainer: {
@@ -664,6 +789,34 @@ const styles = StyleSheet.create({
   continueButtonText: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  modalBackButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  modalBackText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  modalInput: {
+    height: 50,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    fontSize: 16,
+  },
+  modalSubmitButton: {
+    height: 50,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  modalSubmitText: {
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
 

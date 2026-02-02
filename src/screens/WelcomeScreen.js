@@ -1,23 +1,37 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  SafeAreaView,
+  ImageBackground,
   Platform,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
+import { useAuth } from '../context/AuthContext';
+import {
+  signInWithGoogle as googleSignIn,
+  signInWithApple as appleSignIn,
+  isAppleSignInSupported,
+} from '../services/authService';
 
 /**
- * Welcome screen: centered text, Get Started button, Log In link.
- * Background and header/subheader positions are simplified per design notes.
+ * Welcome screen: centered text, Get Started button, Google/Apple sign-in, Log In link.
  */
 const WelcomeScreen = () => {
   const navigation = useNavigation();
+  const { signInWithGoogle, signInWithApple: setAppleUser } = useAuth();
+  const [loading, setLoading] = useState(false);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <ImageBackground
+      source={require('../../assets/images/welcome_bg.png')}
+      style={styles.container}
+      resizeMode="cover"
+    >
       <View style={styles.content}>
         <View>
           <Text style={styles.headerTitle}>Welcome</Text>
@@ -33,9 +47,73 @@ const WelcomeScreen = () => {
             style={styles.primaryButton}
             onPress={() => navigation.navigate('Signup')}
             activeOpacity={0.8}
+            disabled={loading}
           >
             <Text style={styles.primaryButtonText}>Get Started</Text>
           </TouchableOpacity>
+
+          {/* Google Sign-In */}
+          <TouchableOpacity
+            style={styles.socialButton}
+            onPress={async () => {
+              try {
+                setLoading(true);
+                const authUser = await signInWithGoogle();
+                if (authUser) navigation.navigate('MainTabs');
+              } catch (error) {
+                Alert.alert('Error', error.message || 'Google sign-in failed');
+              } finally {
+                setLoading(false);
+              }
+            }}
+            disabled={loading}
+            activeOpacity={0.8}
+          >
+            {loading ? (
+              <ActivityIndicator color="#1A1A1A" size="small" />
+            ) : (
+              <>
+                <Ionicons name="logo-google" size={20} color="#1A1A1A" />
+                <Text style={styles.socialButtonText}>Continue with Google</Text>
+              </>
+            )}
+          </TouchableOpacity>
+
+          {/* Apple Sign-In - iOS only */}
+          {isAppleSignInSupported() && (
+            <TouchableOpacity
+              style={[styles.socialButton, styles.appleButton]}
+              onPress={async () => {
+                try {
+                  setLoading(true);
+                  const appleResponse = await appleSignIn();
+                  if (appleResponse) {
+                    const authUser = setAppleUser(appleResponse);
+                    if (authUser) {
+                      // Auth state update will trigger AppNavigator to show MainTabs
+                    }
+                  }
+                } catch (error) {
+                  Alert.alert('Error', error.message || 'Apple sign-in failed');
+                } finally {
+                  setLoading(false);
+                }
+              }}
+              disabled={loading}
+              activeOpacity={0.8}
+            >
+              {loading ? (
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              ) : (
+                <>
+                  <Ionicons name="logo-apple" size={22} color="#FFFFFF" />
+                  <Text style={[styles.socialButtonText, { color: '#FFFFFF' }]}>
+                    Continue with Apple
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+          )}
 
           <View style={styles.loginRow}>
             <Text style={styles.loginPrompt}>Already have an account?</Text>
@@ -45,15 +123,15 @@ const WelcomeScreen = () => {
           </View>
         </View>
       </View>
-    </SafeAreaView>
+    </ImageBackground>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#8D6E63', // Warm brown/tan background
     justifyContent: 'center',
+    alignItems: 'center',
   },
   content: {
     paddingHorizontal: 24,
@@ -100,6 +178,29 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   primaryButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1A1A1A',
+  },
+  socialButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+    borderRadius: 100,
+    minWidth: 240,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  appleButton: {
+    backgroundColor: '#000000',
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  socialButtonText: {
     fontSize: 16,
     fontWeight: '600',
     color: '#1A1A1A',

@@ -12,164 +12,148 @@ import {
   ActivityIndicator,
   Modal,
   Pressable,
+  Keyboard,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
 import { useNavigation } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import PhoneInput from 'react-native-phone-number-input';
-import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
-import appleAuth from '@invertase/react-native-apple-authentication';
+import { useAuth } from '../../context/AuthContext';
+import {
+  signInWithGoogle as googleSignIn,
+  signInWithApple as appleSignIn,
+  isAppleSignInSupported,
+} from '../../services/authService';
 import AuthScreenBackground from '../../components/AuthScreenBackground';
-
-// Configure Google Sign In (wrapped in try-catch to prevent crashes if not properly set up)
-try {
-  GoogleSignin.configure({
-    webClientId: 'YOUR_WEB_CLIENT_ID', // From Google Cloud Console
-    iosClientId: 'YOUR_IOS_CLIENT_ID', // From Google Cloud Console
-  });
-} catch (error) {
-  console.log('Google Sign In configuration error:', error);
-}
 
 const LoginScreen = () => {
   const theme = useTheme();
   const navigation = useNavigation();
+  const { login, signInWithGoogle, signInWithApple } = useAuth();
   const [phone, setPhone] = useState('');
+  const [formattedPhone, setFormattedPhone] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showOtherMethods, setShowOtherMethods] = useState(false);
   const [email, setEmail] = useState('');
   const phoneInputRef = React.useRef(null);
+  const scrollViewRef = React.useRef(null);
 
-  useEffect(() => {
-    // Check if Google Sign In is available (only for Android)
-    if (Platform.OS === 'android') {
-      GoogleSignin.hasPlayServices()
-        .then((hasPlayService) => {
-          console.log('Google Play Services available:', hasPlayService);
-        })
-        .catch((error) => {
-          console.log('Google Play Services error:', error);
-        });
-    }
-  }, []);
+  // Scroll to input when focused
+  const scrollToInput = (yOffset) => {
+    setTimeout(() => {
+      scrollViewRef.current?.scrollTo({ y: yOffset, animated: true });
+    }, 100);
+  };
 
-  const handlePhoneLogin = () => {
+  // Dismiss keyboard when tapping outside
+  const dismissKeyboard = () => {
+    Keyboard.dismiss();
+  };
+
+  const handlePhoneLogin = async () => {
     if (!phone || !password) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
     }
     setLoading(true);
-    // TODO: Implement phone login logic
-    const formattedPhone = phoneInputRef.current?.getFormattedNumber() || phone;
-    console.log('Phone Login:', { phone: formattedPhone, password });
-    setTimeout(() => {
+    try {
+      const phoneToUse = formattedPhone || phone;
+      await login({ phone: phoneToUse, password });
+      // Auth state update will trigger AppNavigator to show MainTabs
+    } catch (err) {
+      Alert.alert('Error', err.message || 'Login failed');
+    } finally {
       setLoading(false);
-      navigation.navigate('MainTabs');
-    }, 1000);
+    }
   };
 
-  const handleEmailLogin = () => {
+  const handleEmailLogin = async () => {
     if (!email || !password) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
     }
     setLoading(true);
-    // TODO: Implement email login logic
-    console.log('Email Login:', { email, password });
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      await login({ email: email.trim(), password });
       setShowOtherMethods(false);
-      navigation.navigate('MainTabs');
-    }, 1000);
+      // Auth state update will trigger AppNavigator to show MainTabs
+    } catch (err) {
+      Alert.alert('Error', err.message || 'Login failed');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleGoogleSignIn = async () => {
     try {
       setLoading(true);
-      if (Platform.OS === 'android') {
-        await GoogleSignin.hasPlayServices();
-        const userInfo = await GoogleSignin.signIn();
-        console.log('Google Sign In:', userInfo);
-      } else if (Platform.OS === 'web') {
-        // Web Google Sign In implementation
-        console.log('Web Google Sign In');
+      const authUser = await signInWithGoogle();
+      if (authUser) {
+        setShowOtherMethods(false);
+        // Auth state update will trigger AppNavigator to show MainTabs
       }
-      setLoading(false);
-      setShowOtherMethods(false);
-      navigation.navigate('MainTabs');
     } catch (error) {
+      Alert.alert('Error', error.message || 'Google sign-in failed');
+      console.log('Google Sign In Error:', error);
+    } finally {
       setLoading(false);
-      if (error.code === statusCodes.SIGN_IN_CANCELLED) {
-        console.log('User cancelled Google Sign In');
-      } else if (error.code === statusCodes.IN_PROGRESS) {
-        console.log('Google Sign In in progress');
-      } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-        Alert.alert('Error', 'Google Play Services not available');
-      } else {
-        Alert.alert('Error', 'Google sign-in failed');
-        console.log('Google Sign In Error:', error);
-      }
     }
   };
 
   const handleAppleSignIn = async () => {
     try {
       setLoading(true);
-      if (Platform.OS === 'ios' && appleAuth.isSupported) {
-        const appleAuthRequestResponse = await appleAuth.performRequest({
-          requestedOperation: appleAuth.Operation.LOGIN,
-          requestedScopes: [appleAuth.Scope.EMAIL, appleAuth.Scope.FULL_NAME],
-        });
-
-        const credentialState = await appleAuth.getCredentialStateForUser(
-          appleAuthRequestResponse.user
-        );
-
-        if (credentialState === appleAuth.State.AUTHORIZED) {
-          console.log('Apple Sign In:', appleAuthRequestResponse);
-          setLoading(false);
-          setShowOtherMethods(false);
-          navigation.navigate('MainTabs');
-        }
+      const appleResponse = await appleSignIn();
+      if (appleResponse) {
+        await signInWithApple(appleResponse);
+        setShowOtherMethods(false);
+        // Auth state update will trigger AppNavigator to show MainTabs
       }
-    } catch (e) {
+    } catch (error) {
+      Alert.alert('Error', error.message || 'Apple sign-in failed');
+      console.log('Apple Sign In Error:', error);
+    } finally {
       setLoading(false);
-      if (e.code === appleAuth.Error.CANCELED) {
-        console.log('User cancelled Apple Sign In');
-      } else {
-        Alert.alert('Error', 'Apple sign-in failed');
-        console.log('Apple Sign In Error:', e);
-      }
     }
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
-    >
-      {/* Lottie background with blur and gradient overlay */}
-      <AuthScreenBackground lottieSource={require('../../../assets/lottie/log_in.json')} />
-
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={styles.flex}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 10 : 0}
       >
-        {/* Header with Log In title */}
-        <View style={styles.topHeader}>
-          <Text style={[styles.screenTitle, { color: theme.colors.text }]}>
-            Log In
-          </Text>
-        </View>
+        {/* Lottie background with blur and gradient overlay */}
+        <AuthScreenBackground lottieSource={require('../../../assets/lottie/log_in.json')} />
 
-        {/* Logo */}
-        <View style={styles.logoContainer}>
-          <Text style={[styles.logo, { color: theme.colors.text }]}>
-            Fastivalle™
-          </Text>
-        </View>
+        <ScrollView
+          ref={scrollViewRef}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          bounces={true}
+          keyboardDismissMode="on-drag"
+          automaticallyAdjustKeyboardInsets={true}
+          onScrollBeginDrag={dismissKeyboard}
+        >
+          {/* Header with Log In title */}
+          <Pressable onPress={dismissKeyboard}>
+            <View style={styles.topHeader}>
+              <Text style={[styles.screenTitle, { color: theme.colors.text }]}>
+                Log In
+              </Text>
+            </View>
+
+            {/* Logo */}
+            <View style={styles.logoContainer}>
+              <Text style={[styles.logo, { color: theme.colors.text }]}>
+                Fastivalle™
+              </Text>
+            </View>
+          </Pressable>
 
         {/* Welcome Back */}
         <View style={styles.header}>
@@ -190,9 +174,7 @@ const LoginScreen = () => {
               defaultCode="US"
               layout="first"
               onChangeText={setPhone}
-              onChangeFormattedText={(text) => {
-                setPhone(text);
-              }}
+              onChangeFormattedText={setFormattedPhone}
               containerStyle={[
                 styles.phoneInputContainer,
                 { backgroundColor: '#FFFFFF', borderColor: theme.colors.border },
@@ -207,6 +189,7 @@ const LoginScreen = () => {
               textInputProps={{
                 placeholder: '(234) 555 678 901',
                 placeholderTextColor: theme.colors.textSecondary,
+                keyboardType: 'phone-pad',
               }}
             />
           </View>
@@ -232,6 +215,7 @@ const LoginScreen = () => {
               secureTextEntry
               autoCapitalize="none"
               editable={!loading}
+              onFocus={() => scrollToInput(120)}
             />
           </View>
 
@@ -393,7 +377,7 @@ const LoginScreen = () => {
                 <View style={[styles.dividerLine, { borderColor: theme.colors.border }]} />
               </View>
 
-              {Platform.OS === 'ios' && appleAuth.isSupported && (
+              {isAppleSignInSupported() && (
                 <TouchableOpacity
                   style={[
                     styles.modalSocialButton,
@@ -439,8 +423,9 @@ const LoginScreen = () => {
             </View>
           </View>
         </Pressable>
-      </Modal>
-    </KeyboardAvoidingView>
+        </Modal>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 
@@ -449,10 +434,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F5F5F0',
   },
+  flex: {
+    flex: 1,
+    backgroundColor: '#F5F5F0',
+  },
   scrollContent: {
     flexGrow: 1,
     padding: 24,
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingTop: 20,
+    paddingBottom: 40,
     zIndex: 1,
   },
   topHeader: {

@@ -46,12 +46,12 @@ const AuthScreenBackground = ({ lottieSource = require('../../assets/lottie/log_
       )}
 
       {/* Layer 3: Gradient overlay for depth and readability */}
-      <View style={styles.gradientOverlay} pointerEvents="none">
+      {/* <View style={styles.gradientOverlay} pointerEvents="none">
         <View style={[styles.gradientLayer, styles.gradientLayer1]} />
         <View style={[styles.gradientLayer, styles.gradientLayer2]} />
         <View style={[styles.gradientLayer, styles.gradientLayer3]} />
         <View style={[styles.gradientLayer, styles.gradientLayer4]} />
-      </View>
+      </View> */}
     </View>
   );
 };

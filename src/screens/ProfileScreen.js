@@ -5,12 +5,36 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Image,
+  Alert,
 } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
+import { useAuth } from '../context/AuthContext';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
 const ProfileScreen = () => {
   const theme = useTheme();
+  const { user, signOut } = useAuth();
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Log Out',
+      'Are you sure you want to log out?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Log Out', style: 'destructive', onPress: signOut },
+      ]
+    );
+  };
+
+  const displayName = user?.name || 'User';
+  const initials = displayName
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2) || '?';
+  const displayEmail = user?.email || '';
 
   const menuItems = [
     { id: 1, icon: 'person-outline', label: 'Edit Profile', action: () => {} },
@@ -19,7 +43,7 @@ const ProfileScreen = () => {
     { id: 4, icon: 'card-outline', label: 'Payment Methods', action: () => {} },
     { id: 5, icon: 'help-circle-outline', label: 'Help & Support', action: () => {} },
     { id: 6, icon: 'information-circle-outline', label: 'About', action: () => {} },
-    { id: 7, icon: 'log-out-outline', label: 'Logout', action: () => {}, isDestructive: true },
+    { id: 7, icon: 'log-out-outline', label: 'Log Out', action: handleLogout, isDestructive: true },
   ];
 
   return (
@@ -29,16 +53,22 @@ const ProfileScreen = () => {
     >
       <View style={styles.header}>
         <View style={[styles.avatar, { backgroundColor: theme.colors.primary }]}>
-          <Text style={[styles.avatarText, { color: theme.colors.background }]}>
-            JD
-          </Text>
+          {user?.photo ? (
+            <Image source={{ uri: user.photo }} style={styles.avatarImage} />
+          ) : (
+            <Text style={[styles.avatarText, { color: theme.colors.background }]}>
+              {initials}
+            </Text>
+          )}
         </View>
         <Text style={[styles.name, { color: theme.colors.text }]}>
-          John Doe
+          {displayName}
         </Text>
-        <Text style={[styles.email, { color: theme.colors.textSecondary }]}>
-          john.doe@example.com
-        </Text>
+        {displayEmail ? (
+          <Text style={[styles.email, { color: theme.colors.textSecondary }]}>
+            {displayEmail}
+          </Text>
+        ) : null}
         <TouchableOpacity
           style={[styles.editButton, { borderColor: theme.colors.primary }]}
         >
@@ -125,6 +155,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 50,
   },
   avatarText: {
     fontSize: 36,

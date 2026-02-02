@@ -5,39 +5,38 @@ import WelcomeScreen from '../screens/WelcomeScreen';
 import LoginScreen from '../screens/auth/LoginScreen';
 import SignupScreen from '../screens/auth/SignupScreen';
 import MainTabsNavigator from './MainTabsNavigator';
+import { useAuth } from '../context/AuthContext';
 
 const Stack = createNativeStackNavigator();
 
 const AppNavigator = () => {
-  const [isLoading, setIsLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [splashDone, setSplashDone] = useState(false);
+  const { isAuthenticated, authInitialized, isLoading } = useAuth();
 
   useEffect(() => {
-    // Splash animation duration: max 2 seconds, then navigate to auth/main
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-      // TODO: Check actual authentication status
-      // setIsAuthenticated(checkAuthStatus());
-    }, 2000);
-
+    const timer = setTimeout(() => setSplashDone(true), 2000);
     return () => clearTimeout(timer);
   }, []);
 
-  if (isLoading) {
+  const showSplash = !splashDone || (authInitialized === false && isLoading);
+
+  if (showSplash) {
     return <SplashScreen />;
+  }
+
+  // When authenticated, show main app; otherwise show auth stack
+  if (isAuthenticated) {
+    return <MainTabsNavigator />;
   }
 
   return (
     <Stack.Navigator
-      screenOptions={{
-        headerShown: false,
-      }}
-      initialRouteName={isAuthenticated ? 'MainTabs' : 'Welcome'}
+      screenOptions={{ headerShown: false }}
+      initialRouteName="Welcome"
     >
       <Stack.Screen name="Welcome" component={WelcomeScreen} />
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="Signup" component={SignupScreen} />
-      <Stack.Screen name="MainTabs" component={MainTabsNavigator} />
     </Stack.Navigator>
   );
 };

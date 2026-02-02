@@ -1226,6 +1226,8 @@ PODS:
     - React-utils (= 0.74.5)
   - RNAppleAuthentication (2.5.1):
     - React-Core
+  - RNCAsyncStorage (1.24.0):
+    - React-Core
   - RNGestureHandler (2.30.0):
     - DoubleConversion
     - glog
@@ -1358,6 +1360,7 @@ DEPENDENCIES:
   - React-utils (from `../node_modules/react-native/ReactCommon/react/utils`)
   - ReactCommon/turbomodule/core (from `../node_modules/react-native/ReactCommon`)
   - "RNAppleAuthentication (from `../node_modules/@invertase/react-native-apple-authentication`)"
+  - "RNCAsyncStorage (from `../node_modules/@react-native-async-storage/async-storage`)"
   - RNGestureHandler (from `../node_modules/react-native-gesture-handler`)
   - "RNGoogleSignin (from `../node_modules/@react-native-google-signin/google-signin`)"
   - RNScreens (from `../node_modules/react-native-screens`)
@@ -1490,6 +1493,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon"
   RNAppleAuthentication:
     :path: "../node_modules/@invertase/react-native-apple-authentication"
+  RNCAsyncStorage:
+    :path: "../node_modules/@react-native-async-storage/async-storage"
   RNGestureHandler:
     :path: "../node_modules/react-native-gesture-handler"
   RNGoogleSignin:
@@ -1566,6 +1571,7 @@ SPEC CHECKSUMS:
   React-utils: f242eb7e7889419d979ca0e1c02ccc0ea6e43b29
   ReactCommon: f7da14a8827b72704169a48c929bcde802698361
   RNAppleAuthentication: d6fe579e5f43cf8db54bdc48518bccea61c592a4
+  RNCAsyncStorage: ec53e44dc3e75b44aa2a9f37618a49c3bc080a7a
   RNGestureHandler: 31cee5e2a282d56449c0666d11be96372f6033e7
   RNGoogleSignin: 08dc4ba7eac2096c7fecfe109f0950fa4683c803
   RNScreens: 177a3fedd12fc8d12af3c23f17e7bbdc9749a2cd

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Image,
@@ -14,6 +14,9 @@ import {
   Modal,
   Pressable,
   Keyboard,
+  Animated,
+  Dimensions,
+  Easing,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
@@ -37,8 +40,10 @@ const SignupScreen = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showOtherMethods, setShowOtherMethods] = useState(false);
-  const [showEmailForm, setShowEmailForm] = useState(false);
+  const [showEmailSignup, setShowEmailSignup] = useState(false); // Toggle between phone/email on main screen
   const [showPassword, setShowPassword] = useState(false);
+  const [showEmailPassword, setShowEmailPassword] = useState(false);
+  const [showEmailConfirmPassword, setShowEmailConfirmPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
@@ -46,6 +51,51 @@ const SignupScreen = () => {
   const [emailConfirmPassword, setEmailConfirmPassword] = useState('');
   const phoneInputRef = React.useRef(null);
   const scrollViewRef = React.useRef(null);
+  
+  // Animation values for modal
+  const overlayOpacity = useRef(new Animated.Value(0)).current;
+  const modalSlide = useRef(new Animated.Value(400)).current; // Start off-screen (400px down)
+
+  // Animate modal open/close
+  useEffect(() => {
+    if (showOtherMethods) {
+      // Reset values before animating in
+      overlayOpacity.setValue(0);
+      modalSlide.setValue(400);
+      
+      // Open animation - overlay fades in smoothly, modal slides up with spring-like ease
+      Animated.parallel([
+        Animated.timing(overlayOpacity, {
+          toValue: 1,
+          duration: 400,
+          easing: Easing.out(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(modalSlide, {
+          toValue: 0,
+          duration: 450,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      // Close animation - overlay fades out, modal slides down
+      Animated.parallel([
+        Animated.timing(overlayOpacity, {
+          toValue: 0,
+          duration: 300,
+          easing: Easing.in(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(modalSlide, {
+          toValue: 400,
+          duration: 350,
+          easing: Easing.in(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [showOtherMethods]);
 
   // Scroll to input when focused
   const scrollToInput = (yOffset) => {
@@ -138,7 +188,12 @@ const SignupScreen = () => {
   };
 
   const handleEmailSignUpPress = () => {
-    setShowEmailForm(true);
+    setShowOtherMethods(false); // Close modal
+    setShowEmailSignup(true); // Show email form on main screen
+  };
+
+  const handleBackToPhone = () => {
+    setShowEmailSignup(false);
   };
 
   const handleEmailSignupSubmit = async () => {
@@ -164,8 +219,7 @@ const SignupScreen = () => {
     setLoading(true);
     try {
       await register({ email: email.trim(), password: emailPassword, name: name.trim() || undefined });
-      setShowEmailForm(false);
-      setShowOtherMethods(false);
+      setShowEmailSignup(false);
       // Navigate to profile setup
       navigation.replace('ProfileSetup');
     } catch (err) {
@@ -222,179 +276,354 @@ const SignupScreen = () => {
 
         {/* Form */}
         <View style={styles.form}>
-          {/* Phone Number Input */}
-          <View style={styles.inputContainer}>
-            <Text style={[styles.label, { color: theme.colors.text }]}>
-              Phone Number
-            </Text>
-            <PhoneInput
-              ref={phoneInputRef}
-              defaultValue={phone}
-              defaultCode="US"
-              layout="first"
-              onChangeText={setPhone}
-              onChangeFormattedText={setFormattedPhone}
-              containerStyle={[
-                styles.phoneInputContainer,
-                { backgroundColor: '#FFFFFF', borderColor: theme.colors.border },
-              ]}
-              textContainerStyle={styles.phoneInputTextContainer}
-              textInputStyle={[
-                styles.phoneInputText,
-                { color: theme.colors.text },
-              ]}
-              codeTextStyle={{ color: theme.colors.text }}
-              flagButtonStyle={styles.flagButton}
-              textInputProps={{
-                placeholder: '(234) 555 678 901',
-                placeholderTextColor: theme.colors.textSecondary,
-                keyboardType: 'phone-pad',
-              }}
-            />
-          </View>
-
-          {/* Create Password Input */}
-          <View style={styles.inputContainer}>
-            <Text style={[styles.label, { color: theme.colors.text }]}>
-              Create Password
-            </Text>
-            <View style={styles.passwordInputWrapper}>
-              <TextInput
-                style={[
-                  styles.input,
-                  styles.passwordInput,
-                  {
-                    backgroundColor: '#FFFFFF',
-                    color: theme.colors.text,
-                    borderColor: theme.colors.border,
-                  },
-                ]}
-                placeholder="Enter password"
-                placeholderTextColor={theme.colors.textSecondary}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPassword}
-                autoCapitalize="none"
-                editable={!loading}
-                onFocus={() => scrollToInput(120)}
-              />
+          {showEmailSignup ? (
+            <>
+              {/* Back to Phone Button */}
               <TouchableOpacity
-                style={styles.eyeButton}
-                onPress={() => setShowPassword(!showPassword)}
+                style={styles.backToPhoneButton}
+                onPress={handleBackToPhone}
               >
-                <Ionicons
-                  name={showPassword ? 'eye' : 'eye-outline'}
-                  size={22}
-                  color={theme.colors.textSecondary}
-                />
+                <Ionicons name="arrow-back" size={20} color={theme.colors.text} />
+                <Text style={[styles.backToPhoneText, { color: theme.colors.text }]}>
+                  Back to Phone
+                </Text>
               </TouchableOpacity>
-            </View>
-            
-            {/* Password Validation */}
-            {password.length > 0 && (
-              <View style={styles.validationContainer}>
-                <ValidationItem
-                  isValid={passwordValidation.length}
-                  text="8-20 characters."
-                />
-                <ValidationItem
-                  isValid={passwordValidation.hasLetterNumberSpecial}
-                  text="At least one letter, number and special character"
+
+              {/* Email Input */}
+              <View style={styles.inputContainer}>
+                <Text style={[styles.label, { color: theme.colors.text }]}>
+                  Email
+                </Text>
+                <TextInput
+                  style={[
+                    styles.input,
+                    {
+                      backgroundColor: '#FFFFFF',
+                      color: theme.colors.text,
+                      borderColor: theme.colors.border,
+                    },
+                  ]}
+                  placeholder="Enter your email"
+                  placeholderTextColor={theme.colors.textSecondary}
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoComplete="email"
+                  editable={!loading}
                 />
               </View>
-            )}
-          </View>
 
-          {/* Confirm Password Input */}
-          <View style={styles.inputContainer}>
-            <Text style={[styles.label, { color: theme.colors.text }]}>
-              Confirm Password
-            </Text>
-            <View style={styles.passwordInputWrapper}>
-              <TextInput
-                style={[
-                  styles.input,
-                  styles.passwordInput,
-                  {
-                    backgroundColor: '#FFFFFF',
-                    color: theme.colors.text,
-                    borderColor: confirmPassword.length > 0 && password !== confirmPassword
-                      ? '#E53935'
-                      : theme.colors.border,
-                    borderWidth: confirmPassword.length > 0 && password !== confirmPassword ? 2 : 1,
-                  },
-                ]}
-                placeholder="Enter password again"
-                placeholderTextColor={theme.colors.textSecondary}
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                secureTextEntry={!showConfirmPassword}
-                autoCapitalize="none"
-                editable={!loading}
-                onFocus={() => scrollToInput(220)}
-              />
-              <TouchableOpacity
-                style={styles.eyeButton}
-                onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-              >
-                <Ionicons
-                  name={showConfirmPassword ? 'eye' : 'eye-outline'}
-                  size={22}
-                  color={theme.colors.textSecondary}
+              {/* Name Input (Optional) */}
+              <View style={styles.inputContainer}>
+                <Text style={[styles.label, { color: theme.colors.text }]}>
+                  Name <Text style={styles.optionalLabel}>(optional)</Text>
+                </Text>
+                <TextInput
+                  style={[
+                    styles.input,
+                    {
+                      backgroundColor: '#FFFFFF',
+                      color: theme.colors.text,
+                      borderColor: theme.colors.border,
+                    },
+                  ]}
+                  placeholder="Enter your name"
+                  placeholderTextColor={theme.colors.textSecondary}
+                  value={name}
+                  onChangeText={setName}
+                  autoCapitalize="words"
+                  editable={!loading}
                 />
+              </View>
+
+              {/* Create Password Input */}
+              <View style={styles.inputContainer}>
+                <Text style={[styles.label, { color: theme.colors.text }]}>
+                  Create Password
+                </Text>
+                <View style={styles.passwordInputWrapper}>
+                  <TextInput
+                    style={[
+                      styles.input,
+                      styles.passwordInput,
+                      {
+                        backgroundColor: '#FFFFFF',
+                        color: theme.colors.text,
+                        borderColor: theme.colors.border,
+                      },
+                    ]}
+                    placeholder="Enter password"
+                    placeholderTextColor={theme.colors.textSecondary}
+                    value={emailPassword}
+                    onChangeText={setEmailPassword}
+                    secureTextEntry={!showEmailPassword}
+                    autoCapitalize="none"
+                    editable={!loading}
+                  />
+                  <TouchableOpacity
+                    style={styles.eyeButton}
+                    onPress={() => setShowEmailPassword(!showEmailPassword)}
+                  >
+                    <Ionicons
+                      name={showEmailPassword ? 'eye' : 'eye-outline'}
+                      size={22}
+                      color={theme.colors.textSecondary}
+                    />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Confirm Password Input */}
+              <View style={styles.inputContainer}>
+                <Text style={[styles.label, { color: theme.colors.text }]}>
+                  Confirm Password
+                </Text>
+                <View style={styles.passwordInputWrapper}>
+                  <TextInput
+                    style={[
+                      styles.input,
+                      styles.passwordInput,
+                      {
+                        backgroundColor: '#FFFFFF',
+                        color: theme.colors.text,
+                        borderColor: emailConfirmPassword.length > 0 && emailPassword !== emailConfirmPassword
+                          ? '#E53935'
+                          : theme.colors.border,
+                        borderWidth: emailConfirmPassword.length > 0 && emailPassword !== emailConfirmPassword ? 2 : 1,
+                      },
+                    ]}
+                    placeholder="Enter password again"
+                    placeholderTextColor={theme.colors.textSecondary}
+                    value={emailConfirmPassword}
+                    onChangeText={setEmailConfirmPassword}
+                    secureTextEntry={!showEmailConfirmPassword}
+                    autoCapitalize="none"
+                    editable={!loading}
+                  />
+                  <TouchableOpacity
+                    style={styles.eyeButton}
+                    onPress={() => setShowEmailConfirmPassword(!showEmailConfirmPassword)}
+                  >
+                    <Ionicons
+                      name={showEmailConfirmPassword ? 'eye' : 'eye-outline'}
+                      size={22}
+                      color={theme.colors.textSecondary}
+                    />
+                  </TouchableOpacity>
+                </View>
+                
+                {/* Confirm Password Validation Messages */}
+                {emailConfirmPassword.length > 0 && emailPassword !== emailConfirmPassword && (
+                  <Text style={styles.errorText}>Passwords don't match</Text>
+                )}
+              </View>
+
+              {/* Sign Up Button */}
+              <TouchableOpacity
+                style={[
+                  styles.signupButton,
+                  { backgroundColor: '#000000' },
+                  loading && styles.buttonDisabled,
+                ]}
+                onPress={handleEmailSignupSubmit}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Text style={[styles.signupButtonText, { color: '#FFFFFF' }]}>
+                    Sign Up
+                  </Text>
+                )}
               </TouchableOpacity>
-            </View>
-            
-            {/* Confirm Password Validation Messages */}
-            {password.length > 0 && (!passwordValidation.length || !passwordValidation.hasLetterNumberSpecial) && (
-              <Text style={styles.errorText}>Please enter a valid password</Text>
-            )}
-            {confirmPassword.length > 0 && password !== confirmPassword && (
-              <Text style={styles.errorText}>Passwords don't match</Text>
-            )}
-          </View>
 
-          {/* Sign Up Button */}
-          <TouchableOpacity
-            style={[
-              styles.signupButton,
-              { backgroundColor: '#000000' },
-              loading && styles.buttonDisabled,
-            ]}
-            onPress={handlePhoneSignup}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <Text style={[styles.signupButtonText, { color: '#FFFFFF' }]}>
-                Sign Up
-              </Text>
-            )}
-          </TouchableOpacity>
+              {/* Divider */}
+              <View style={styles.dividerContainer}>
+                <View style={[styles.dividerLine, { borderColor: theme.colors.border }]} />
+                <Text style={[styles.dividerText, { color: theme.colors.textSecondary }]}>
+                  or
+                </Text>
+                <View style={[styles.dividerLine, { borderColor: theme.colors.border }]} />
+              </View>
+            </>
+          ) : (
+            <>
+              {/* Phone Number Input */}
+              <View style={styles.inputContainer}>
+                <Text style={[styles.label, { color: theme.colors.text }]}>
+                  Phone Number
+                </Text>
+                <PhoneInput
+                  ref={phoneInputRef}
+                  defaultValue={phone}
+                  defaultCode="US"
+                  layout="first"
+                  onChangeText={setPhone}
+                  onChangeFormattedText={setFormattedPhone}
+                  containerStyle={[
+                    styles.phoneInputContainer,
+                    { backgroundColor: '#FFFFFF', borderColor: theme.colors.border },
+                  ]}
+                  textContainerStyle={styles.phoneInputTextContainer}
+                  textInputStyle={[
+                    styles.phoneInputText,
+                    { color: theme.colors.text },
+                  ]}
+                  codeTextStyle={{ color: theme.colors.text }}
+                  flagButtonStyle={styles.flagButton}
+                  textInputProps={{
+                    placeholder: '(234) 555 678 901',
+                    placeholderTextColor: theme.colors.textSecondary,
+                    keyboardType: 'phone-pad',
+                  }}
+                />
+              </View>
 
-          {/* Sign Up With Other Methods Button */}
-          <TouchableOpacity
-            style={[
-              styles.otherMethodsButton,
-              { backgroundColor: '#FFFFFF', borderColor: theme.colors.border },
-            ]}
-            onPress={() => setShowOtherMethods(true)}
-            disabled={loading}
-          >
-            <Text style={[styles.otherMethodsButtonText, { color: theme.colors.text }]}>
-              Sign Up With Other Methods
-            </Text>
-          </TouchableOpacity>
+              {/* Create Password Input */}
+              <View style={styles.inputContainer}>
+                <Text style={[styles.label, { color: theme.colors.text }]}>
+                  Create Password
+                </Text>
+                <View style={styles.passwordInputWrapper}>
+                  <TextInput
+                    style={[
+                      styles.input,
+                      styles.passwordInput,
+                      {
+                        backgroundColor: '#FFFFFF',
+                        color: theme.colors.text,
+                        borderColor: theme.colors.border,
+                      },
+                    ]}
+                    placeholder="Enter password"
+                    placeholderTextColor={theme.colors.textSecondary}
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry={!showPassword}
+                    autoCapitalize="none"
+                    editable={!loading}
+                    onFocus={() => scrollToInput(120)}
+                  />
+                  <TouchableOpacity
+                    style={styles.eyeButton}
+                    onPress={() => setShowPassword(!showPassword)}
+                  >
+                    <Ionicons
+                      name={showPassword ? 'eye' : 'eye-outline'}
+                      size={22}
+                      color={theme.colors.textSecondary}
+                    />
+                  </TouchableOpacity>
+                </View>
+                
+                {/* Password Validation */}
+                {password.length > 0 && (
+                  <View style={styles.validationContainer}>
+                    <ValidationItem
+                      isValid={passwordValidation.length}
+                      text="8-20 characters."
+                    />
+                    <ValidationItem
+                      isValid={passwordValidation.hasLetterNumberSpecial}
+                      text="At least one letter, number and special character"
+                    />
+                  </View>
+                )}
+              </View>
 
-          {/* Divider */}
-          <View style={styles.dividerContainer}>
-            <View style={[styles.dividerLine, { borderColor: theme.colors.border }]} />
-            <Text style={[styles.dividerText, { color: theme.colors.textSecondary }]}>
-              or
-            </Text>
-            <View style={[styles.dividerLine, { borderColor: theme.colors.border }]} />
-          </View>
+              {/* Confirm Password Input */}
+              <View style={styles.inputContainer}>
+                <Text style={[styles.label, { color: theme.colors.text }]}>
+                  Confirm Password
+                </Text>
+                <View style={styles.passwordInputWrapper}>
+                  <TextInput
+                    style={[
+                      styles.input,
+                      styles.passwordInput,
+                      {
+                        backgroundColor: '#FFFFFF',
+                        color: theme.colors.text,
+                        borderColor: confirmPassword.length > 0 && password !== confirmPassword
+                          ? '#E53935'
+                          : theme.colors.border,
+                        borderWidth: confirmPassword.length > 0 && password !== confirmPassword ? 2 : 1,
+                      },
+                    ]}
+                    placeholder="Enter password again"
+                    placeholderTextColor={theme.colors.textSecondary}
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    secureTextEntry={!showConfirmPassword}
+                    autoCapitalize="none"
+                    editable={!loading}
+                    onFocus={() => scrollToInput(220)}
+                  />
+                  <TouchableOpacity
+                    style={styles.eyeButton}
+                    onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                  >
+                    <Ionicons
+                      name={showConfirmPassword ? 'eye' : 'eye-outline'}
+                      size={22}
+                      color={theme.colors.textSecondary}
+                    />
+                  </TouchableOpacity>
+                </View>
+                
+                {/* Confirm Password Validation Messages */}
+                {password.length > 0 && (!passwordValidation.length || !passwordValidation.hasLetterNumberSpecial) && (
+                  <Text style={styles.errorText}>Please enter a valid password</Text>
+                )}
+                {confirmPassword.length > 0 && password !== confirmPassword && (
+                  <Text style={styles.errorText}>Passwords don't match</Text>
+                )}
+              </View>
+
+              {/* Sign Up Button */}
+              <TouchableOpacity
+                style={[
+                  styles.signupButton,
+                  { backgroundColor: '#000000' },
+                  loading && styles.buttonDisabled,
+                ]}
+                onPress={handlePhoneSignup}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Text style={[styles.signupButtonText, { color: '#FFFFFF' }]}>
+                    Sign Up
+                  </Text>
+                )}
+              </TouchableOpacity>
+
+              {/* Sign Up With Other Methods Button */}
+              <TouchableOpacity
+                style={[
+                  styles.otherMethodsButton,
+                  { backgroundColor: '#FFFFFF', borderColor: theme.colors.border },
+                ]}
+                onPress={() => setShowOtherMethods(true)}
+                disabled={loading}
+              >
+                <Text style={[styles.otherMethodsButtonText, { color: theme.colors.text }]}>
+                  Sign Up With Other Methods
+                </Text>
+              </TouchableOpacity>
+
+              {/* Divider */}
+              <View style={styles.dividerContainer}>
+                <View style={[styles.dividerLine, { borderColor: theme.colors.border }]} />
+                <Text style={[styles.dividerText, { color: theme.colors.textSecondary }]}>
+                  or
+                </Text>
+                <View style={[styles.dividerLine, { borderColor: theme.colors.border }]} />
+              </View>
+            </>
+          )}
         </View>
 
         {/* Log In Link */}
@@ -414,166 +643,81 @@ const SignupScreen = () => {
       <Modal
         visible={showOtherMethods}
         transparent={true}
-        animationType="slide"
+        animationType="none"
         onRequestClose={() => setShowOtherMethods(false)}
       >
-        <Pressable
-          style={styles.modalOverlay}
-          onPress={() => setShowOtherMethods(false)}
-        >
-          <View
-            style={[styles.modalContent, { backgroundColor: theme.colors.background }]}
-            onStartShouldSetResponder={() => true}
+        <View style={styles.modalContainer}>
+          {/* Animated Overlay - fades in */}
+          <Animated.View
+            style={[
+              styles.modalOverlay,
+              { backgroundColor: 'rgba(0, 0, 0, 0.5)', opacity: overlayOpacity },
+            ]}
+          >
+            <Pressable
+              style={StyleSheet.absoluteFill}
+              onPress={() => setShowOtherMethods(false)}
+            />
+          </Animated.View>
+
+          {/* Animated Modal Content - slides up */}
+          <Animated.View
+            style={[
+              styles.modalContent,
+              { backgroundColor: theme.colors.background, transform: [{ translateY: modalSlide }] },
+            ]}
           >
             {/* Modal Handle */}
             <View style={styles.modalHandle} />
             
             {/* Modal Title */}
             <Text style={[styles.modalTitle, { color: theme.colors.text }]}>
-              {showEmailForm ? 'Sign up with Email' : 'Continue with'}
+              Continue with
             </Text>
 
-            {showEmailForm ? (
-              <View style={styles.modalOptions}>
-                <TouchableOpacity
-                  style={styles.modalBackButton}
-                  onPress={() => setShowEmailForm(false)}
-                  disabled={loading}
-                >
-                  <Ionicons name="arrow-back" size={20} color={theme.colors.text} />
-                  <Text style={[styles.modalBackText, { color: theme.colors.text }]}>Back</Text>
-                </TouchableOpacity>
-                <TextInput
-                  style={[
-                    styles.modalInput,
-                    {
-                      backgroundColor: theme.colors.surface,
-                      color: theme.colors.text,
-                      borderColor: theme.colors.border,
-                    },
-                  ]}
-                  placeholder="Email"
-                  placeholderTextColor={theme.colors.textSecondary}
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoComplete="email"
-                  editable={!loading}
-                />
-                <TextInput
-                  style={[
-                    styles.modalInput,
-                    {
-                      backgroundColor: theme.colors.surface,
-                      color: theme.colors.text,
-                      borderColor: theme.colors.border,
-                    },
-                  ]}
-                  placeholder="Name (optional)"
-                  placeholderTextColor={theme.colors.textSecondary}
-                  value={name}
-                  onChangeText={setName}
-                  autoCapitalize="words"
-                  editable={!loading}
-                />
-                <TextInput
-                  style={[
-                    styles.modalInput,
-                    {
-                      backgroundColor: theme.colors.surface,
-                      color: theme.colors.text,
-                      borderColor: theme.colors.border,
-                    },
-                  ]}
-                  placeholder="Password (8–20 chars)"
-                  placeholderTextColor={theme.colors.textSecondary}
-                  value={emailPassword}
-                  onChangeText={setEmailPassword}
-                  secureTextEntry
-                  autoCapitalize="none"
-                  editable={!loading}
-                />
-                <TextInput
-                  style={[
-                    styles.modalInput,
-                    {
-                      backgroundColor: theme.colors.surface,
-                      color: theme.colors.text,
-                      borderColor: theme.colors.border,
-                    },
-                  ]}
-                  placeholder="Confirm password"
-                  placeholderTextColor={theme.colors.textSecondary}
-                  value={emailConfirmPassword}
-                  onChangeText={setEmailConfirmPassword}
-                  secureTextEntry
-                  autoCapitalize="none"
-                  editable={!loading}
-                />
-                <TouchableOpacity
-                  style={[
-                    styles.modalSubmitButton,
-                    { backgroundColor: '#000000' },
-                    loading && styles.buttonDisabled,
-                  ]}
-                  onPress={handleEmailSignupSubmit}
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <ActivityIndicator color="#FFFFFF" />
-                  ) : (
-                    <Text style={[styles.modalSubmitText, { color: '#FFFFFF' }]}>
-                      Sign Up
-                    </Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            ) : (
-              /* Continue Options */
-              <View style={styles.modalOptions}>
-                {/* Continue with Email */}
+            {/* Continue Options */}
+            <View style={styles.modalOptions}>
+              {/* Continue with Email */}
+              <TouchableOpacity
+                style={styles.continueButton}
+                onPress={handleEmailSignUpPress}
+                disabled={loading}
+              >
+                <Ionicons name="mail-outline" size={20} color={theme.colors.text} />
+                <Text style={[styles.continueButtonText, { color: theme.colors.text }]}>
+                  Continue with Email
+                </Text>
+              </TouchableOpacity>
+
+              {/* Continue with Google */}
+              <TouchableOpacity
+                style={styles.continueButton}
+                onPress={handleGoogleSignUp}
+                disabled={loading}
+              >
+                <Ionicons name="logo-google" size={20} color="#DB4437" />
+                <Text style={[styles.continueButtonText, { color: theme.colors.text }]}>
+                  Continue with Google
+                </Text>
+              </TouchableOpacity>
+
+              {/* Continue with Apple */}
+              {isAppleSignInSupported() && (
                 <TouchableOpacity
                   style={styles.continueButton}
-                  onPress={handleEmailSignUpPress}
+                  onPress={handleAppleSignUp}
                   disabled={loading}
                 >
-                  <Ionicons name="mail-outline" size={20} color={theme.colors.text} />
+                  <Ionicons name="logo-apple" size={20} color={theme.colors.text} />
                   <Text style={[styles.continueButtonText, { color: theme.colors.text }]}>
-                    Continue with Email
+                    Continue with Apple
                   </Text>
                 </TouchableOpacity>
-
-                {/* Continue with Google */}
-                <TouchableOpacity
-                  style={styles.continueButton}
-                  onPress={handleGoogleSignUp}
-                  disabled={loading}
-                >
-                  <Ionicons name="logo-google" size={20} color="#DB4437" />
-                  <Text style={[styles.continueButtonText, { color: theme.colors.text }]}>
-                    Continue with Google
-                  </Text>
-                </TouchableOpacity>
-
-                {/* Continue with Apple */}
-                {isAppleSignInSupported() && (
-                  <TouchableOpacity
-                    style={styles.continueButton}
-                    onPress={handleAppleSignUp}
-                    disabled={loading}
-                  >
-                    <Ionicons name="logo-apple" size={20} color={theme.colors.text} />
-                    <Text style={[styles.continueButtonText, { color: theme.colors.text }]}>
-                      Continue with Apple
-                    </Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            )}
-          </View>
-        </Pressable>
-        </Modal>
+              )}
+            </View>
+          </Animated.View>
+        </View>
+      </Modal>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -753,10 +897,12 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   // Modal Styles
-  modalOverlay: {
+  modalContainer: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
+  },
+  modalOverlay: {
+    ...StyleSheet.absoluteFillObject,
   },
   modalContent: {
     borderTopLeftRadius: 24,
@@ -793,6 +939,20 @@ const styles = StyleSheet.create({
   continueButtonText: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  backToPhoneButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 16,
+  },
+  backToPhoneText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  optionalLabel: {
+    fontWeight: '400',
+    color: '#888888',
   },
   modalBackButton: {
     flexDirection: 'row',

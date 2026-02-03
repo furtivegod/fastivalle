@@ -33,15 +33,15 @@ const WelcomeScreen = () => {
       resizeMode="cover"
     >
       <View style={styles.content}>
-        <View>
+        <View style={styles.headerContainer}>
           <Text style={styles.headerTitle}>Welcome</Text>
-          <Text style={styles.subHeaderTitle}>CHRISTIAN MUSIC FESTIVAL</Text>
+          <Text style={styles.subHeaderTitle}>A space to create, connect, and grow — where your faith, voice, and purpose come together.</Text>
         </View>
         <View>
-          <Text style={styles.mainTitle}>CREATE YOUR RHYTHM</Text>
+          {/* <Text style={styles.mainTitle}>CREATE YOUR RHYTHM</Text>
           <Text style={styles.description}>
             A space to create, connect, and grow — where your faith, voice, and purpose come together.
-          </Text>
+          </Text> */}
 
           <TouchableOpacity
             style={styles.primaryButton}
@@ -53,7 +53,7 @@ const WelcomeScreen = () => {
           </TouchableOpacity>
 
           {/* Google Sign-In */}
-          <TouchableOpacity
+          {/* <TouchableOpacity
             style={styles.socialButton}
             onPress={async () => {
               try {
@@ -77,10 +77,10 @@ const WelcomeScreen = () => {
                 <Text style={styles.socialButtonText}>Continue with Google</Text>
               </>
             )}
-          </TouchableOpacity>
+          </TouchableOpacity> */}
 
           {/* Apple Sign-In - iOS only */}
-          {isAppleSignInSupported() && (
+          {/* {isAppleSignInSupported() && (
             <TouchableOpacity
               style={[styles.socialButton, styles.appleButton]}
               onPress={async () => {
@@ -113,7 +113,7 @@ const WelcomeScreen = () => {
                 </>
               )}
             </TouchableOpacity>
-          )}
+          )} */}
 
           <View style={styles.loginRow}>
             <Text style={styles.loginPrompt}>Already have an account?</Text>
@@ -134,13 +134,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   content: {
-    paddingHorizontal: 24,
+    paddingHorizontal: 0,
     paddingVertical: 32,
     flex: 1,
     justifyContent: 'space-between',
   },
+  headerContainer: {
+    marginTop: 80,
+  },
   headerTitle: {
-    fontSize: 30,
+    fontSize: 58,
     fontWeight: 'bold',
     color: '#FFFFFF',
     textAlign: 'center',
@@ -148,7 +151,8 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   subHeaderTitle: {
-    fontSize: 14,
+    fontSize: 16,
+    maxWidth: 300,
     fontWeight: '500',
     color: '#FFFFFF',
     textAlign: 'center',
@@ -170,12 +174,13 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     backgroundColor: '#FFFFFF',
-    paddingVertical: 16,
+    paddingVertical: 12,
     paddingHorizontal: 48,
     borderRadius: 100,
     minWidth: 240,
     alignItems: 'center',
     marginBottom: 24,
+    width: "100%",
   },
   primaryButtonText: {
     fontSize: 16,

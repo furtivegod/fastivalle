@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,9 @@ import {
   Modal,
   Pressable,
   Keyboard,
+  Animated,
+  Dimensions,
+  Easing,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
@@ -36,9 +39,56 @@ const LoginScreen = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showOtherMethods, setShowOtherMethods] = useState(false);
+  const [showEmailLogin, setShowEmailLogin] = useState(false);
   const [email, setEmail] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const phoneInputRef = React.useRef(null);
   const scrollViewRef = React.useRef(null);
+  
+  // Animation values for modal
+  const overlayOpacity = useRef(new Animated.Value(0)).current;
+  const modalSlide = useRef(new Animated.Value(400)).current;
+
+  // Animate modal open/close
+  useEffect(() => {
+    if (showOtherMethods) {
+      // Reset values before animating in
+      overlayOpacity.setValue(0);
+      modalSlide.setValue(400);
+      
+      // Open animation - overlay fades in smoothly, modal slides up
+      Animated.parallel([
+        Animated.timing(overlayOpacity, {
+          toValue: 1,
+          duration: 400,
+          easing: Easing.out(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(modalSlide, {
+          toValue: 0,
+          duration: 450,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      // Close animation - overlay fades out, modal slides down
+      Animated.parallel([
+        Animated.timing(overlayOpacity, {
+          toValue: 0,
+          duration: 300,
+          easing: Easing.in(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(modalSlide, {
+          toValue: 400,
+          duration: 350,
+          easing: Easing.in(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [showOtherMethods]);
 
   // Scroll to input when focused
   const scrollToInput = (yOffset) => {
@@ -50,6 +100,15 @@ const LoginScreen = () => {
   // Dismiss keyboard when tapping outside
   const dismissKeyboard = () => {
     Keyboard.dismiss();
+  };
+
+  const handleEmailLoginPress = () => {
+    setShowOtherMethods(false);
+    setShowEmailLogin(true);
+  };
+
+  const handleBackToPhone = () => {
+    setShowEmailLogin(false);
   };
 
   const handlePhoneLogin = async () => {
@@ -77,7 +136,7 @@ const LoginScreen = () => {
     setLoading(true);
     try {
       await login({ email: email.trim(), password });
-      setShowOtherMethods(false);
+      setShowEmailLogin(false);
       // Auth state update will trigger AppNavigator to show MainTabs
     } catch (err) {
       Alert.alert('Error', err.message || 'Login failed');
@@ -162,116 +221,236 @@ const LoginScreen = () => {
           </Text>
         </View>
 
-        {/* Phone Number Input */}
+        {/* Form */}
         <View style={styles.form}>
-          <View style={styles.inputContainer}>
-            <Text style={[styles.label, { color: theme.colors.text }]}>
-              Phone Number
-            </Text>
-            <PhoneInput
-              ref={phoneInputRef}
-              defaultValue={phone}
-              defaultCode="US"
-              layout="first"
-              onChangeText={setPhone}
-              onChangeFormattedText={setFormattedPhone}
-              containerStyle={[
-                styles.phoneInputContainer,
-                { backgroundColor: '#FFFFFF', borderColor: theme.colors.border },
-              ]}
-              textContainerStyle={styles.phoneInputTextContainer}
-              textInputStyle={[
-                styles.phoneInputText,
-                { color: theme.colors.text },
-              ]}
-              codeTextStyle={{ color: theme.colors.text }}
-              flagButtonStyle={styles.flagButton}
-              textInputProps={{
-                placeholder: '(234) 555 678 901',
-                placeholderTextColor: theme.colors.textSecondary,
-                keyboardType: 'phone-pad',
-              }}
-            />
-          </View>
+          {showEmailLogin ? (
+            <>
+              {/* Back to Phone Button */}
+              <TouchableOpacity
+                style={styles.backToPhoneButton}
+                onPress={handleBackToPhone}
+              >
+                <Ionicons name="arrow-back" size={20} color={theme.colors.text} />
+                <Text style={[styles.backToPhoneText, { color: theme.colors.text }]}>
+                  Back to Phone
+                </Text>
+              </TouchableOpacity>
 
-          {/* Password Input */}
-          <View style={styles.inputContainer}>
-            <Text style={[styles.label, { color: theme.colors.text }]}>
-              Password
-            </Text>
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  backgroundColor: '#FFFFFF',
-                  color: theme.colors.text,
-                  borderColor: theme.colors.border,
-                },
-              ]}
-              placeholder="Enter password"
-              placeholderTextColor={theme.colors.textSecondary}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              autoCapitalize="none"
-              editable={!loading}
-              onFocus={() => scrollToInput(120)}
-            />
-          </View>
+              {/* Email Input */}
+              <View style={styles.inputContainer}>
+                <Text style={[styles.label, { color: theme.colors.text }]}>
+                  Email
+                </Text>
+                <TextInput
+                  style={[
+                    styles.input,
+                    {
+                      backgroundColor: '#FFFFFF',
+                      color: theme.colors.text,
+                      borderColor: theme.colors.border,
+                    },
+                  ]}
+                  placeholder="Enter your email"
+                  placeholderTextColor={theme.colors.textSecondary}
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoComplete="email"
+                  editable={!loading}
+                />
+              </View>
 
-          {/* Forgot Password Link */}
-          <TouchableOpacity
-            style={styles.forgotPassword}
-            onPress={() => {
-              // TODO: Navigate to forgot password screen
-            }}
-          >
-            <Text style={[styles.forgotPasswordText, { color: '#FF6B35' }]}>
-              Forgot Password?
-            </Text>
-          </TouchableOpacity>
+              {/* Password Input */}
+              <View style={styles.inputContainer}>
+                <Text style={[styles.label, { color: theme.colors.text }]}>
+                  Password
+                </Text>
+                <View style={styles.passwordInputWrapper}>
+                  <TextInput
+                    style={[
+                      styles.input,
+                      styles.passwordInput,
+                      {
+                        backgroundColor: '#FFFFFF',
+                        color: theme.colors.text,
+                        borderColor: theme.colors.border,
+                      },
+                    ]}
+                    placeholder="Enter password"
+                    placeholderTextColor={theme.colors.textSecondary}
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry={!showPassword}
+                    autoCapitalize="none"
+                    editable={!loading}
+                  />
+                  <TouchableOpacity
+                    style={styles.eyeButton}
+                    onPress={() => setShowPassword(!showPassword)}
+                  >
+                    <Ionicons
+                      name={showPassword ? 'eye' : 'eye-outline'}
+                      size={22}
+                      color={theme.colors.textSecondary}
+                    />
+                  </TouchableOpacity>
+                </View>
+              </View>
 
-          {/* Log In Button */}
-          <TouchableOpacity
-            style={[
-              styles.loginButton,
-              { backgroundColor: '#000000' },
-              loading && styles.buttonDisabled,
-            ]}
-            onPress={handlePhoneLogin}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <Text style={[styles.loginButtonText, { color: '#FFFFFF' }]}>
-                Log In
-              </Text>
-            )}
-          </TouchableOpacity>
+              {/* Forgot Password Link */}
+              <TouchableOpacity
+                style={styles.forgotPassword}
+                onPress={() => {
+                  // TODO: Navigate to forgot password screen
+                }}
+              >
+                <Text style={[styles.forgotPasswordText, { color: '#FF6B35' }]}>
+                  Forgot Password?
+                </Text>
+              </TouchableOpacity>
 
-          {/* Divider */}
-          <View style={styles.dividerContainer}>
-            <View style={[styles.dividerLine, { borderColor: theme.colors.border }]} />
-            <Text style={[styles.dividerText, { color: theme.colors.textSecondary }]}>
-              or
-            </Text>
-            <View style={[styles.dividerLine, { borderColor: theme.colors.border }]} />
-          </View>
+              {/* Log In Button */}
+              <TouchableOpacity
+                style={[
+                  styles.loginButton,
+                  { backgroundColor: '#000000' },
+                  loading && styles.buttonDisabled,
+                ]}
+                onPress={handleEmailLogin}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Text style={[styles.loginButtonText, { color: '#FFFFFF' }]}>
+                    Log In
+                  </Text>
+                )}
+              </TouchableOpacity>
 
-          {/* Log In With Other Methods Button */}
-          <TouchableOpacity
-            style={[
-              styles.otherMethodsButton,
-              { backgroundColor: '#FFFFFF', borderColor: theme.colors.border },
-            ]}
-            onPress={() => setShowOtherMethods(true)}
-            disabled={loading}
-          >
-            <Text style={[styles.otherMethodsButtonText, { color: theme.colors.text }]}>
-              Log In With Other Methods
-            </Text>
-          </TouchableOpacity>
+              {/* Divider */}
+              <View style={styles.dividerContainer}>
+                <View style={[styles.dividerLine, { borderColor: theme.colors.border }]} />
+                <Text style={[styles.dividerText, { color: theme.colors.textSecondary }]}>
+                  or
+                </Text>
+                <View style={[styles.dividerLine, { borderColor: theme.colors.border }]} />
+              </View>
+            </>
+          ) : (
+            <>
+              {/* Phone Number Input */}
+              <View style={styles.inputContainer}>
+                <Text style={[styles.label, { color: theme.colors.text }]}>
+                  Phone Number
+                </Text>
+                <PhoneInput
+                  ref={phoneInputRef}
+                  defaultValue={phone}
+                  defaultCode="US"
+                  layout="first"
+                  onChangeText={setPhone}
+                  onChangeFormattedText={setFormattedPhone}
+                  containerStyle={[
+                    styles.phoneInputContainer,
+                    { backgroundColor: '#FFFFFF', borderColor: theme.colors.border },
+                  ]}
+                  textContainerStyle={styles.phoneInputTextContainer}
+                  textInputStyle={[
+                    styles.phoneInputText,
+                    { color: theme.colors.text },
+                  ]}
+                  codeTextStyle={{ color: theme.colors.text }}
+                  flagButtonStyle={styles.flagButton}
+                  textInputProps={{
+                    placeholder: '(234) 555 678 901',
+                    placeholderTextColor: theme.colors.textSecondary,
+                    keyboardType: 'phone-pad',
+                  }}
+                />
+              </View>
+
+              {/* Password Input */}
+              <View style={styles.inputContainer}>
+                <Text style={[styles.label, { color: theme.colors.text }]}>
+                  Password
+                </Text>
+                <TextInput
+                  style={[
+                    styles.input,
+                    {
+                      backgroundColor: '#FFFFFF',
+                      color: theme.colors.text,
+                      borderColor: theme.colors.border,
+                    },
+                  ]}
+                  placeholder="Enter password"
+                  placeholderTextColor={theme.colors.textSecondary}
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry
+                  autoCapitalize="none"
+                  editable={!loading}
+                  onFocus={() => scrollToInput(120)}
+                />
+              </View>
+
+              {/* Forgot Password Link */}
+              <TouchableOpacity
+                style={styles.forgotPassword}
+                onPress={() => {
+                  // TODO: Navigate to forgot password screen
+                }}
+              >
+                <Text style={[styles.forgotPasswordText, { color: '#FF6B35' }]}>
+                  Forgot Password?
+                </Text>
+              </TouchableOpacity>
+
+              {/* Log In Button */}
+              <TouchableOpacity
+                style={[
+                  styles.loginButton,
+                  { backgroundColor: '#000000' },
+                  loading && styles.buttonDisabled,
+                ]}
+                onPress={handlePhoneLogin}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Text style={[styles.loginButtonText, { color: '#FFFFFF' }]}>
+                    Log In
+                  </Text>
+                )}
+              </TouchableOpacity>
+
+              {/* Divider */}
+              <View style={styles.dividerContainer}>
+                <View style={[styles.dividerLine, { borderColor: theme.colors.border }]} />
+                <Text style={[styles.dividerText, { color: theme.colors.textSecondary }]}>
+                  or
+                </Text>
+                <View style={[styles.dividerLine, { borderColor: theme.colors.border }]} />
+              </View>
+
+              {/* Log In With Other Methods Button */}
+              <TouchableOpacity
+                style={[
+                  styles.otherMethodsButton,
+                  { backgroundColor: '#FFFFFF', borderColor: theme.colors.border },
+                ]}
+                onPress={() => setShowOtherMethods(true)}
+                disabled={loading}
+              >
+                <Text style={[styles.otherMethodsButtonText, { color: theme.colors.text }]}>
+                  Log In With Other Methods
+                </Text>
+              </TouchableOpacity>
+            </>
+          )}
         </View>
 
         {/* Sign Up Link */}
@@ -291,139 +470,81 @@ const LoginScreen = () => {
       <Modal
         visible={showOtherMethods}
         transparent={true}
-        animationType="slide"
+        animationType="none"
         onRequestClose={() => setShowOtherMethods(false)}
       >
-        <Pressable
-          style={styles.modalOverlay}
-          onPress={() => setShowOtherMethods(false)}
-        >
-          <View
-            style={[styles.modalContent, { backgroundColor: theme.colors.background }]}
-            onStartShouldSetResponder={() => true}
+        <View style={styles.modalContainer}>
+          {/* Animated Overlay - fades in */}
+          <Animated.View
+            style={[
+              styles.modalOverlay,
+              { backgroundColor: 'rgba(0, 0, 0, 0.5)', opacity: overlayOpacity },
+            ]}
           >
-            <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: theme.colors.text }]}>
-                Other Login Methods
-              </Text>
-              <TouchableOpacity onPress={() => setShowOtherMethods(false)}>
-                <Ionicons name="close" size={24} color={theme.colors.text} />
-              </TouchableOpacity>
-            </View>
+            <Pressable
+              style={StyleSheet.absoluteFill}
+              onPress={() => setShowOtherMethods(false)}
+            />
+          </Animated.View>
 
-            <View style={styles.modalMethods}>
-              {/* Email Login */}
-              <View style={styles.modalMethodSection}>
-                <Text style={[styles.modalMethodLabel, { color: theme.colors.text }]}>
-                  Email
-                </Text>
-                <TextInput
-                  style={[
-                    styles.modalInput,
-                    {
-                      backgroundColor: theme.colors.surface,
-                      color: theme.colors.text,
-                      borderColor: theme.colors.border,
-                    },
-                  ]}
-                  placeholder="Enter your email"
-                  placeholderTextColor={theme.colors.textSecondary}
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoComplete="email"
-                  editable={!loading}
-                />
-                <TextInput
-                  style={[
-                    styles.modalInput,
-                    {
-                      backgroundColor: theme.colors.surface,
-                      color: theme.colors.text,
-                      borderColor: theme.colors.border,
-                    },
-                    styles.modalInputMargin,
-                  ]}
-                  placeholder="Enter your password"
-                  placeholderTextColor={theme.colors.textSecondary}
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry
-                  autoCapitalize="none"
-                  editable={!loading}
-                />
-                <TouchableOpacity
-                  style={[
-                    styles.modalButton,
-                    { backgroundColor: theme.colors.primary },
-                    loading && styles.buttonDisabled,
-                  ]}
-                  onPress={handleEmailLogin}
-                  disabled={loading}
-                >
-                  <Text style={[styles.modalButtonText, { color: theme.colors.background }]}>
-                    {loading ? 'Signing In...' : 'Log In with Email'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
+          {/* Animated Modal Content - slides up */}
+          <Animated.View
+            style={[
+              styles.modalContent,
+              { backgroundColor: theme.colors.background, transform: [{ translateY: modalSlide }] },
+            ]}
+          >
+            {/* Modal Handle */}
+            <View style={styles.modalHandle} />
+            
+            {/* Modal Title */}
+            <Text style={[styles.modalTitle, { color: theme.colors.text }]}>
+              Continue with
+            </Text>
 
-              {/* Social Login Options */}
-              <View style={styles.modalDivider}>
-                <View style={[styles.dividerLine, { borderColor: theme.colors.border }]} />
-                <Text style={[styles.dividerText, { color: theme.colors.textSecondary }]}>
-                  or
-                </Text>
-                <View style={[styles.dividerLine, { borderColor: theme.colors.border }]} />
-              </View>
-
-              {isAppleSignInSupported() && (
-                <TouchableOpacity
-                  style={[
-                    styles.modalSocialButton,
-                    styles.appleButton,
-                    { backgroundColor: theme.colors.text },
-                  ]}
-                  onPress={handleAppleSignIn}
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <ActivityIndicator color={theme.colors.background} />
-                  ) : (
-                    <>
-                      <Ionicons name="logo-apple" size={20} color={theme.colors.background} />
-                      <Text style={[styles.modalSocialButtonText, { color: theme.colors.background }]}>
-                        Continue with Apple
-                      </Text>
-                    </>
-                  )}
-                </TouchableOpacity>
-              )}
-
+            {/* Continue Options */}
+            <View style={styles.modalOptions}>
+              {/* Continue with Email */}
               <TouchableOpacity
-                style={[
-                  styles.modalSocialButton,
-                  styles.googleButton,
-                  { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
-                ]}
+                style={styles.continueButton}
+                onPress={handleEmailLoginPress}
+                disabled={loading}
+              >
+                <Ionicons name="mail-outline" size={20} color={theme.colors.text} />
+                <Text style={[styles.continueButtonText, { color: theme.colors.text }]}>
+                  Continue with Email
+                </Text>
+              </TouchableOpacity>
+
+              {/* Continue with Google */}
+              <TouchableOpacity
+                style={styles.continueButton}
                 onPress={handleGoogleSignIn}
                 disabled={loading}
               >
-                {loading ? (
-                  <ActivityIndicator color={theme.colors.text} />
-                ) : (
-                  <>
-                    <Ionicons name="logo-google" size={20} color={theme.colors.text} />
-                    <Text style={[styles.modalSocialButtonText, { color: theme.colors.text }]}>
-                      Continue with Google
-                    </Text>
-                  </>
-                )}
+                <Ionicons name="logo-google" size={20} color="#DB4437" />
+                <Text style={[styles.continueButtonText, { color: theme.colors.text }]}>
+                  Continue with Google
+                </Text>
               </TouchableOpacity>
+
+              {/* Continue with Apple */}
+              {isAppleSignInSupported() && (
+                <TouchableOpacity
+                  style={styles.continueButton}
+                  onPress={handleAppleSignIn}
+                  disabled={loading}
+                >
+                  <Ionicons name="logo-apple" size={20} color={theme.colors.text} />
+                  <Text style={[styles.continueButtonText, { color: theme.colors.text }]}>
+                    Continue with Apple
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
-          </View>
-        </Pressable>
-        </Modal>
+          </Animated.View>
+        </View>
+      </Modal>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -482,13 +603,13 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   phoneInputContainer: {
-    borderRadius: 8,
+    borderRadius: 100,
     borderWidth: 1,
     width: '100%',
     height: 50,
   },
   phoneInputTextContainer: {
-    borderRadius: 8,
+    borderRadius: 100,
     paddingVertical: 0,
     backgroundColor: '#FFFFFF',
   },
@@ -502,7 +623,7 @@ const styles = StyleSheet.create({
   input: {
     height: 50,
     borderWidth: 1,
-    borderRadius: 8,
+    borderRadius: 100,
     paddingHorizontal: 16,
     fontSize: 16,
     backgroundColor: '#FFFFFF',
@@ -516,8 +637,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   loginButton: {
-    height: 50,
-    borderRadius: 8,
+    height: 40,
+    borderRadius: 100,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 24,
@@ -542,7 +663,7 @@ const styles = StyleSheet.create({
   },
   otherMethodsButton: {
     height: 50,
-    borderRadius: 8,
+    borderRadius: 100,
     borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
@@ -568,80 +689,70 @@ const styles = StyleSheet.create({
   buttonDisabled: {
     opacity: 0.6,
   },
-  // Modal Styles
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 24,
-    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
-    maxHeight: '80%',
-  },
-  modalHeader: {
+  backToPhoneButton: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 24,
+    gap: 8,
+    marginBottom: 16,
   },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  modalMethods: {
-    gap: 20,
-  },
-  modalMethodSection: {
-    gap: 12,
-  },
-  modalMethodLabel: {
-    fontSize: 14,
+  backToPhoneText: {
+    fontSize: 16,
     fontWeight: '600',
   },
-  modalInput: {
-    height: 50,
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    fontSize: 16,
-  },
-  modalInputMargin: {
-    marginTop: 0,
-  },
-  modalButton: {
-    height: 50,
-    borderRadius: 8,
+  passwordInputWrapper: {
+    position: 'relative',
     justifyContent: 'center',
-    alignItems: 'center',
   },
-  modalButtonText: {
-    fontSize: 16,
+  passwordInput: {
+    paddingRight: 50,
+  },
+  eyeButton: {
+    position: 'absolute',
+    right: 16,
+    height: '100%',
+    justifyContent: 'center',
+  },
+  // Modal Styles
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  modalOverlay: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  modalContent: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    paddingTop: 12,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+  },
+  modalHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: '#E0E0E0',
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 22,
     fontWeight: 'bold',
+    marginBottom: 24,
   },
-  modalDivider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 8,
+  modalOptions: {
+    gap: 12,
   },
-  modalSocialButton: {
-    height: 50,
-    borderRadius: 8,
+  continueButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    borderWidth: 1,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#F5F5F0',
+    gap: 10,
   },
-  appleButton: {
-    borderWidth: 0,
-  },
-  googleButton: {
-    borderWidth: 1,
-  },
-  modalSocialButtonText: {
+  continueButtonText: {
     fontSize: 16,
     fontWeight: '600',
   },

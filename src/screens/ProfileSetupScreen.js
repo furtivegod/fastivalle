@@ -131,7 +131,7 @@ const ProfileSetupScreen = () => {
 
       if (res.ok) {
         await checkAuthStatus(); // Refresh user data
-        if (isEditMode) {
+        if (isEditMode && navigation.canGoBack()) {
           navigation.goBack();
         } else {
           navigation.replace('MainTabs');
@@ -163,7 +163,7 @@ const ProfileSetupScreen = () => {
         <View style={styles.header}>
           <TouchableOpacity
             style={styles.backButton}
-            onPress={() => navigation.goBack()}
+            onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.replace('MainTabs')}
           >
             <Ionicons name="chevron-back" size={24} color={theme.colors.text} />
           </TouchableOpacity>

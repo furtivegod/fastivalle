@@ -59,8 +59,8 @@ const ProfileScreen = () => {
     >
       <View style={styles.header}>
         <View style={[styles.avatar, { backgroundColor: theme.colors.primary }]}>
-          {user?.photo ? (
-            <Image source={{ uri: user.photo }} style={styles.avatarImage} />
+          {user?.profileImage ? (
+            <Image source={{ uri: user.profileImage }} style={styles.avatarImage} />
           ) : (
             <Text style={[styles.avatarText, { color: theme.colors.background }]}>
               {initials}

@@ -72,6 +72,9 @@ export const AuthProvider = ({ children }) => {
     name: u.name,
     profileImage: u.profileImage,
     authProvider: u.authProvider,
+    dateOfBirth: u.dateOfBirth,
+    bio: u.bio,
+    isPrivate: u.isPrivate,
   });
 
   /**

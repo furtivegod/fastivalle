@@ -95,7 +95,8 @@ const SignupScreen = () => {
     try {
       const phoneToUse = formattedPhone || phone;
       await register({ phone: phoneToUse, password });
-      // Auth state update will trigger AppNavigator to show MainTabs
+      // Navigate to profile setup
+      navigation.replace('ProfileSetup');
     } catch (err) {
       Alert.alert('Error', err.message || 'Sign up failed');
     } finally {
@@ -108,7 +109,8 @@ const SignupScreen = () => {
       setLoading(true);
       setShowOtherMethods(false);
       await signInWithGoogle();
-      // Auth state update will trigger AppNavigator to show MainTabs
+      // Navigate to profile setup
+      navigation.replace('ProfileSetup');
     } catch (error) {
       Alert.alert('Error', error.message || 'Google sign-up failed');
       console.log('Google Sign Up Error:', error);
@@ -124,7 +126,8 @@ const SignupScreen = () => {
       const appleResponse = await appleSignInNative();
       if (appleResponse) {
         await signInWithApple(appleResponse);
-        // Auth state update will trigger AppNavigator to show MainTabs
+        // Navigate to profile setup
+        navigation.replace('ProfileSetup');
       }
     } catch (error) {
       Alert.alert('Error', error.message || 'Apple sign-up failed');
@@ -163,7 +166,8 @@ const SignupScreen = () => {
       await register({ email: email.trim(), password: emailPassword, name: name.trim() || undefined });
       setShowEmailForm(false);
       setShowOtherMethods(false);
-      // Auth state update will trigger AppNavigator to show MainTabs
+      // Navigate to profile setup
+      navigation.replace('ProfileSetup');
     } catch (err) {
       Alert.alert('Error', err.message || 'Sign up failed');
     } finally {

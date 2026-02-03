@@ -10,10 +10,12 @@ import {
 } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { useAuth } from '../context/AuthContext';
+import { useNavigation } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
 const ProfileScreen = () => {
   const theme = useTheme();
+  const navigation = useNavigation();
   const { user, signOut } = useAuth();
 
   const handleLogout = () => {
@@ -36,8 +38,12 @@ const ProfileScreen = () => {
     .slice(0, 2) || '?';
   const displayEmail = user?.email || '';
 
+  const handleEditProfile = () => {
+    navigation.navigate('ProfileSetup');
+  };
+
   const menuItems = [
-    { id: 1, icon: 'person-outline', label: 'Edit Profile', action: () => {} },
+    { id: 1, icon: 'person-outline', label: 'Edit Profile', action: handleEditProfile },
     { id: 2, icon: 'settings-outline', label: 'Settings', action: () => {} },
     { id: 3, icon: 'notifications-outline', label: 'Notifications', action: () => {} },
     { id: 4, icon: 'card-outline', label: 'Payment Methods', action: () => {} },
@@ -71,6 +77,7 @@ const ProfileScreen = () => {
         ) : null}
         <TouchableOpacity
           style={[styles.editButton, { borderColor: theme.colors.primary }]}
+          onPress={handleEditProfile}
         >
           <Text style={[styles.editButtonText, { color: theme.colors.primary }]}>
             Edit Profile

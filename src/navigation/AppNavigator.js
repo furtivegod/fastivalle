@@ -4,6 +4,7 @@ import SplashScreen from '../screens/SplashScreen';
 import WelcomeScreen from '../screens/WelcomeScreen';
 import LoginScreen from '../screens/auth/LoginScreen';
 import SignupScreen from '../screens/auth/SignupScreen';
+import ProfileSetupScreen from '../screens/ProfileSetupScreen';
 import MainTabsNavigator from './MainTabsNavigator';
 import { useAuth } from '../context/AuthContext';
 
@@ -24,9 +25,14 @@ const AppNavigator = () => {
     return <SplashScreen />;
   }
 
-  // When authenticated, show main app; otherwise show auth stack
+  // When authenticated, show main app with ProfileSetup accessible
   if (isAuthenticated) {
-    return <MainTabsNavigator />;
+    return (
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="MainTabs" component={MainTabsNavigator} />
+        <Stack.Screen name="ProfileSetup" component={ProfileSetupScreen} />
+      </Stack.Navigator>
+    );
   }
 
   return (
@@ -37,6 +43,7 @@ const AppNavigator = () => {
       <Stack.Screen name="Welcome" component={WelcomeScreen} />
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="Signup" component={SignupScreen} />
+      <Stack.Screen name="ProfileSetup" component={ProfileSetupScreen} />
     </Stack.Navigator>
   );
 };
